@@ -21,12 +21,15 @@ type LLMConfig struct {
 	Backend string `mapstructure:"backend"`
 	Model   string `mapstructure:"model"`
 	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
 }
 
 type EmbeddingConfig struct {
-	Backend string `mapstructure:"backend"`
-	Model   string `mapstructure:"model"`
-	APIKey  string `mapstructure:"api_key"`
+	Backend   string `mapstructure:"backend"`
+	Model     string `mapstructure:"model"`
+	APIKey    string `mapstructure:"api_key"`
+	BaseURL   string `mapstructure:"base_url"`
+	Dimension int    `mapstructure:"dimension"`
 }
 
 type DBConfig struct {
@@ -60,7 +63,10 @@ func Load() (*Config, error) {
 
 	// Explicit bindings for keys that contain underscores
 	_ = v.BindEnv("llm.api_key", "INODE_LLM_API_KEY")
+	_ = v.BindEnv("llm.base_url", "INODE_LLM_BASE_URL")
 	_ = v.BindEnv("embedding.api_key", "INODE_EMBEDDING_API_KEY")
+	_ = v.BindEnv("embedding.base_url", "INODE_EMBEDDING_BASE_URL")
+	_ = v.BindEnv("embedding.dimension", "INODE_EMBEDDING_DIMENSION")
 	_ = v.BindEnv("log.level", "INODE_LOG_LEVEL")
 
 	// Config file: ~/.inode/config.toml
@@ -74,11 +80,14 @@ func Load() (*Config, error) {
 	v.AddConfigPath(configDir)
 	_ = v.ReadInConfig() // non-fatal if file doesn't exist yet
 
-	// Defaults
-	v.SetDefault("llm.backend", "claude-api")
-	v.SetDefault("llm.model", "claude-sonnet-4-6")
-	v.SetDefault("embedding.backend", "voyage")
-	v.SetDefault("embedding.model", "voyage-3")
+	// Defaults — Ollama local by default, no API keys required
+	v.SetDefault("llm.backend", "ollama")
+	v.SetDefault("llm.model", "llama3.2")
+	v.SetDefault("llm.base_url", "http://localhost:11434")
+	v.SetDefault("embedding.backend", "ollama")
+	v.SetDefault("embedding.model", "nomic-embed-text")
+	v.SetDefault("embedding.base_url", "http://localhost:11434")
+	v.SetDefault("embedding.dimension", 768)
 	v.SetDefault("db.path", filepath.Join(configDir, "notes.db"))
 	v.SetDefault("defaults.sensitive", true)
 	v.SetDefault("log.level", "info")

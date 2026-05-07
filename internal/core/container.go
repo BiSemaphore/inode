@@ -11,7 +11,6 @@ import (
 )
 
 // Container holds all initialised services and adapters.
-// It is built once at CLI startup and passed to commands.
 type Container struct {
 	Notes  *NoteService
 	Search *SearchService
@@ -20,14 +19,6 @@ type Container struct {
 
 // NewContainer initialises every dependency from the loaded config.
 func NewContainer(cfg *config.Config) (*Container, error) {
-	// Validate required keys.
-	if cfg.LLM.APIKey == "" {
-		return nil, fmt.Errorf("LLM API key not set — run: inode config set llm.api_key <key>")
-	}
-	if cfg.Embedding.APIKey == "" {
-		return nil, fmt.Errorf("embedding API key not set — run: inode config set embedding.api_key <key>")
-	}
-
 	// Key manager (encryption).
 	configDir, err := config.ConfigDir()
 	if err != nil {
@@ -43,19 +34,42 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	if dbPath == "" {
 		dbPath = configDir + "/notes.db"
 	}
-	// Expand ~ manually (os.UserHomeDir not needed; config already resolves it via viper).
 	if len(dbPath) >= 2 && dbPath[:2] == "~/" {
 		home, _ := os.UserHomeDir()
 		dbPath = home + dbPath[1:]
 	}
-	dbAdapter, err := db.NewSQLiteAdapter(dbPath)
+	dbAdapter, err := db.NewSQLiteAdapter(dbPath, cfg.Embedding.Dimension)
 	if err != nil {
 		return nil, fmt.Errorf("init db: %w", err)
 	}
 
-	// Adapters.
-	embAdapter := embedding.NewVoyageAdapter(cfg.Embedding.APIKey, cfg.Embedding.Model)
-	llmAdapter := llm.NewClaudeAdapter(cfg.LLM.APIKey, cfg.LLM.Model)
+	// LLM adapter — selected by backend config.
+	var llmAdapter llm.Adapter
+	switch cfg.LLM.Backend {
+	case "claude-api":
+		if cfg.LLM.APIKey == "" {
+			return nil, fmt.Errorf("llm.api_key required for claude-api backend — run: inode config set llm.api_key <key>")
+		}
+		llmAdapter = llm.NewClaudeAdapter(cfg.LLM.APIKey, cfg.LLM.Model)
+	case "ollama", "":
+		llmAdapter = llm.NewOllamaAdapter(cfg.LLM.BaseURL, cfg.LLM.Model)
+	default:
+		return nil, fmt.Errorf("unknown llm.backend %q (supported: ollama, claude-api)", cfg.LLM.Backend)
+	}
+
+	// Embedding adapter — selected by backend config.
+	var embAdapter embedding.Adapter
+	switch cfg.Embedding.Backend {
+	case "voyage":
+		if cfg.Embedding.APIKey == "" {
+			return nil, fmt.Errorf("embedding.api_key required for voyage backend — run: inode config set embedding.api_key <key>")
+		}
+		embAdapter = embedding.NewVoyageAdapter(cfg.Embedding.APIKey, cfg.Embedding.Model)
+	case "ollama", "":
+		embAdapter = embedding.NewOllamaEmbeddingAdapter(cfg.Embedding.BaseURL, cfg.Embedding.Model)
+	default:
+		return nil, fmt.Errorf("unknown embedding.backend %q (supported: ollama, voyage)", cfg.Embedding.Backend)
+	}
 
 	// Core services.
 	tagger := NewTaggerService(llmAdapter)

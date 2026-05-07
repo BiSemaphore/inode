@@ -36,12 +36,12 @@ brew install shahidraza/tap/inode
 
 ### Linux / Windows
 
-Download the latest binary from [GitHub Releases](https://github.com/shahidraza/inode/releases).
+Download the latest binary from [GitHub Releases](https://github.com/shahid-io/inode/releases).
 
 ### Build from source
 
 ```bash
-go install github.com/shahidraza/inode@latest
+go install github.com/shahid-io/inode@latest
 ```
 
 ---

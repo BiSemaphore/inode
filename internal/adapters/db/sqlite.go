@@ -19,17 +19,22 @@ func init() {
 
 // SQLiteAdapter implements DBAdapter using SQLite + sqlite-vec.
 type SQLiteAdapter struct {
-	db *sql.DB
+	db        *sql.DB
+	dimension int
 }
 
 // NewSQLiteAdapter opens (or creates) the SQLite database and runs migrations.
-func NewSQLiteAdapter(path string) (*SQLiteAdapter, error) {
+// dimension is the embedding vector size (e.g. 768 for nomic-embed-text, 1024 for voyage-3).
+func NewSQLiteAdapter(path string, dimension int) (*SQLiteAdapter, error) {
+	if dimension <= 0 {
+		dimension = 768
+	}
 	db, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
 
-	a := &SQLiteAdapter{db: db}
+	a := &SQLiteAdapter{db: db, dimension: dimension}
 	if err := a.migrate(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -50,13 +55,16 @@ func (a *SQLiteAdapter) migrate() error {
 			is_sensitive  INTEGER NOT NULL DEFAULT 1,
 			created_at    TEXT    NOT NULL,
 			updated_at    TEXT    NOT NULL
-		);
+		);`)
+	if err != nil {
+		return err
+	}
 
+	_, err = a.db.Exec(fmt.Sprintf(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS note_embeddings USING vec0(
 			note_id   TEXT PRIMARY KEY,
-			embedding FLOAT[1024]
-		);
-	`)
+			embedding FLOAT[%d]
+		);`, a.dimension))
 	return err
 }
 

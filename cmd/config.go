@@ -32,8 +32,9 @@ Keys:
 		key, value := args[0], args[1]
 
 		allowed := map[string]bool{
-			"llm.backend": true, "llm.model": true, "llm.api_key": true,
+			"llm.backend": true, "llm.model": true, "llm.api_key": true, "llm.base_url": true,
 			"embedding.backend": true, "embedding.model": true, "embedding.api_key": true,
+			"embedding.base_url": true, "embedding.dimension": true,
 			"db.path": true, "defaults.sensitive": true, "log.level": true,
 		}
 		if !allowed[key] {
@@ -77,14 +78,17 @@ var configShowCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO(Phase 1): implement config show
 		// Print all config values; redact api_key fields
-		fmt.Printf("LLM backend:        %s\n", cfg.LLM.Backend)
-		fmt.Printf("LLM model:          %s\n", cfg.LLM.Model)
-		fmt.Printf("LLM API key:        %s\n", redact(cfg.LLM.APIKey))
-		fmt.Printf("Embedding backend:  %s\n", cfg.Embedding.Backend)
-		fmt.Printf("Embedding model:    %s\n", cfg.Embedding.Model)
-		fmt.Printf("Embedding API key:  %s\n", redact(cfg.Embedding.APIKey))
-		fmt.Printf("DB path:            %s\n", cfg.DB.Path)
-		fmt.Printf("Default sensitive:  %v\n", cfg.Defaults.Sensitive)
+		fmt.Printf("LLM backend:         %s\n", cfg.LLM.Backend)
+		fmt.Printf("LLM model:           %s\n", cfg.LLM.Model)
+		fmt.Printf("LLM base URL:        %s\n", cfg.LLM.BaseURL)
+		fmt.Printf("LLM API key:         %s\n", redact(cfg.LLM.APIKey))
+		fmt.Printf("Embedding backend:   %s\n", cfg.Embedding.Backend)
+		fmt.Printf("Embedding model:     %s\n", cfg.Embedding.Model)
+		fmt.Printf("Embedding base URL:  %s\n", cfg.Embedding.BaseURL)
+		fmt.Printf("Embedding API key:   %s\n", redact(cfg.Embedding.APIKey))
+		fmt.Printf("Embedding dimension: %d\n", cfg.Embedding.Dimension)
+		fmt.Printf("DB path:             %s\n", cfg.DB.Path)
+		fmt.Printf("Default sensitive:   %v\n", cfg.Defaults.Sensitive)
 		return nil
 	},
 }

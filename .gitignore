@@ -1,0 +1,47 @@
+# Binaries
+inode
+inode.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+dist/
+
+# Go
+*.test
+*.out
+vendor/
+go.work
+go.work.sum
+
+# Build artifacts
+build/
+bin/
+
+# Local development
+.env
+.env.local
+*.local
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage.out
+coverage.html
+
+# goreleaser
+.goreleaser-local.yml

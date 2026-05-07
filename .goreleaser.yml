@@ -1,0 +1,92 @@
+version: 2
+
+project_name: inode
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: inode
+    main: ./main.go
+    binary: inode
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/shahidraza/inode/internal/version.Version={{.Version}}
+      - -X github.com/shahidraza/inode/internal/version.Commit={{.Commit}}
+      - -X github.com/shahidraza/inode/internal/version.Date={{.Date}}
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+      - "^test:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "New Features"
+      regexp: "^feat"
+      order: 0
+    - title: "Bug Fixes"
+      regexp: "^fix"
+      order: 1
+    - title: "Performance"
+      regexp: "^perf"
+      order: 2
+    - title: "Other"
+      order: 999
+
+release:
+  github:
+    owner: shahidraza
+    name: inode
+  name_template: "v{{ .Version }}"
+  footer: |
+    ---
+    **Full Changelog**: https://github.com/shahidraza/inode/blob/main/CHANGELOG.md
+
+brews:
+  - name: inode
+    repository:
+      owner: shahidraza
+      name: homebrew-tap
+    directory: Formula
+    homepage: https://github.com/shahidraza/inode
+    description: "Developer-first CLI for storing and retrieving notes with natural language"
+    license: MIT
+    install: |
+      bin.install "inode"
+    test: |
+      system "#{bin}/inode", "--version"

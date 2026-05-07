@@ -20,7 +20,7 @@ issues or pull requests.
 ## Getting Started
 
 ```bash
-git clone https://github.com/shahidraza/inode.git
+git clone https://github.com/shahid-io/inode.git
 cd inode
 go mod download
 go build ./...

@@ -1,8 +1,8 @@
 # inode
 
-> Find anything you've ever saved. Just ask.
+> Personal knowledge base and secret vault — semantic search via vector embeddings and RAG.
 
-**inode** is a developer-first CLI for storing notes, secrets, API keys, commands, and decisions — retrieved later using natural language instead of grep, folders, or memory.
+**inode** is a CLI tool for storing notes, secrets, API keys, commands, and decisions — retrieved via vector similarity search and LLM inference instead of grep, folders, or memory.
 
 ```bash
 $ inode add "My Stripe test key is sk_test_xxxxx"
@@ -36,12 +36,12 @@ brew install shahidraza/tap/inode
 
 ### Linux / Windows
 
-Download the latest binary from [GitHub Releases](https://github.com/shahidraza/inode/releases).
+Download the latest binary from [GitHub Releases](https://github.com/shahid-io/inode/releases).
 
 ### Build from source
 
 ```bash
-go install github.com/shahidraza/inode@latest
+go install github.com/shahid-io/inode@latest
 ```
 
 ---

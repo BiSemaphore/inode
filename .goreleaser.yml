@@ -25,9 +25,9 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X github.com/shahidraza/inode/internal/version.Version={{.Version}}
-      - -X github.com/shahidraza/inode/internal/version.Commit={{.Commit}}
-      - -X github.com/shahidraza/inode/internal/version.Date={{.Date}}
+      - -X github.com/shahid-io/inode/internal/version.Version={{.Version}}
+      - -X github.com/shahid-io/inode/internal/version.Commit={{.Commit}}
+      - -X github.com/shahid-io/inode/internal/version.Date={{.Date}}
 
 archives:
   - id: default
@@ -75,7 +75,7 @@ release:
   name_template: "v{{ .Version }}"
   footer: |
     ---
-    **Full Changelog**: https://github.com/shahidraza/inode/blob/main/CHANGELOG.md
+    **Full Changelog**: https://github.com/shahid-io/inode/blob/main/CHANGELOG.md
 
 brews:
   - name: inode
@@ -83,7 +83,7 @@ brews:
       owner: shahidraza
       name: homebrew-tap
     directory: Formula
-    homepage: https://github.com/shahidraza/inode
+    homepage: https://github.com/shahid-io/inode
     description: "Developer-first CLI for storing and retrieving notes with natural language"
     license: MIT
     install: |

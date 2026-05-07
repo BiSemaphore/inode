@@ -8,10 +8,16 @@ LDFLAGS  := -s -w \
             -X $(MODULE)/internal/version.Commit=$(COMMIT) \
             -X $(MODULE)/internal/version.Date=$(DATE)
 
-.PHONY: build run test lint clean tidy help
+INSTALL_DIR := /opt/homebrew/bin
+
+.PHONY: build install run test lint clean tidy help
 
 build:                         ## Build binary for current platform
-	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
+	CGO_ENABLED=1 go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
+
+install: build                 ## Build and install to $(INSTALL_DIR)
+	cp $(BINARY) $(INSTALL_DIR)/$(BINARY)
+	@echo "installed → $(INSTALL_DIR)/$(BINARY)"
 
 run:                           ## Build and run with args (usage: make run ARGS="ask 'query'")
 	go run -ldflags "$(LDFLAGS)" . $(ARGS)

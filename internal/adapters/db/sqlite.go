@@ -122,27 +122,34 @@ func (a *SQLiteAdapter) Save(ctx context.Context, note *model.Note) (string, err
 	return note.ID, tx.Commit()
 }
 
-// Get fetches a single note by ID.
+// Get fetches a single note by ID prefix.
 func (a *SQLiteAdapter) Get(ctx context.Context, id string) (*model.Note, error) {
 	row := a.db.QueryRowContext(ctx, `
 		SELECT id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at
-		FROM notes WHERE id = ?`, id)
+		FROM notes WHERE id LIKE ? || '%' LIMIT 1`, id)
 
 	return scanNote(row)
 }
 
-// Delete removes a note and its embedding by ID.
+// Delete removes a note and its embedding by ID prefix.
 func (a *SQLiteAdapter) Delete(ctx context.Context, id string) error {
+	// Resolve prefix to full ID first.
+	var fullID string
+	err := a.db.QueryRowContext(ctx, `SELECT id FROM notes WHERE id LIKE ? || '%' LIMIT 1`, id).Scan(&fullID)
+	if err != nil {
+		return fmt.Errorf("note not found: %w", err)
+	}
+
 	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM note_embeddings WHERE note_id = ?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM note_embeddings WHERE note_id = ?`, fullID); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM notes WHERE id = ?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM notes WHERE id = ?`, fullID); err != nil {
 		return err
 	}
 	return tx.Commit()

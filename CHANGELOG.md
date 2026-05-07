@@ -7,30 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project structure and documentation
-- Product specification and technical architecture docs
-
 ---
 
-<!-- Versions are added here as releases are cut -->
-<!-- Example:
-
-## [1.0.0] - 2026-06-01
+## [0.1.0] - 2026-05-08
 
 ### Added
-- `inode add` command with auto-tagging via Claude API
-- `inode ask` command with RAG-based natural language search
-- `inode list` command with category/tag filters
-- `inode config` command for managing LLM and embedding settings
-- AES-256-GCM encryption for sensitive notes
-- Voyage AI embeddings with sqlite-vec vector search
+- `inode add` — save notes, secrets, commands, and decisions with auto-classification
+- `inode ask` — semantic search with RAG answer via local LLM
+- `inode list` — tabular note listing with category, tag, and sensitivity filters
+- `inode note get/delete` — fetch or remove a note by ID prefix
+- `inode config set/show` — manage configuration without editing files
+- Local-first backend: Ollama (llama3.2 + nomic-embed-text) — no API keys required
+- Cloud backend support: Claude API + Voyage AI (opt-in via config)
+- AES-256-GCM encryption for sensitive notes with Argon2id key derivation
+- SQLite + sqlite-vec for local vector similarity search
+- Docker Compose setup for Ollama
 
-## [0.1.0] - 2026-05-15
-
-### Added
-- Project scaffold, Go module, CI pipeline
-
--->
-
-[Unreleased]: https://github.com/shahid-io/inode/compare/HEAD
+[Unreleased]: https://github.com/shahid-io/inode/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/shahid-io/inode/releases/tag/v0.1.0

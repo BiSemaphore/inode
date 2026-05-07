@@ -5,14 +5,13 @@ project_name: inode
 before:
   hooks:
     - go mod tidy
-    - go test ./...
 
 builds:
   - id: inode
     main: ./main.go
     binary: inode
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     goos:
       - linux
       - darwin
@@ -34,7 +33,7 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     files:
       - README.md
       - LICENSE
@@ -70,23 +69,9 @@ changelog:
 
 release:
   github:
-    owner: shahidraza
+    owner: shahid-io
     name: inode
   name_template: "v{{ .Version }}"
   footer: |
     ---
     **Full Changelog**: https://github.com/shahid-io/inode/blob/main/CHANGELOG.md
-
-brews:
-  - name: inode
-    repository:
-      owner: shahidraza
-      name: homebrew-tap
-    directory: Formula
-    homepage: https://github.com/shahid-io/inode
-    description: "Developer-first CLI for storing and retrieving notes with natural language"
-    license: MIT
-    install: |
-      bin.install "inode"
-    test: |
-      system "#{bin}/inode", "--version"

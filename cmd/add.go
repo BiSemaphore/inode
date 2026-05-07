@@ -1,15 +1,20 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
 
+	"github.com/shahid-io/inode/internal/core"
 	"github.com/spf13/cobra"
 )
 
 var (
-	addCategory  string
-	addTags      []string
-	addSensitive bool
+	addCategory    string
+	addTags        []string
+	addSensitive   bool
 	addNoSensitive bool
 )
 
@@ -28,13 +33,49 @@ Examples:
   inode add --no-sensitive "Just a reminder"
   inode add   # opens $EDITOR`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(Phase 1): implement note add
-		// 1. Get content from args or open $EDITOR
-		// 2. TaggerService.Classify() → category, tags, is_sensitive, summary
-		// 3. EmbeddingAdapter.Embed(content) → vector
-		// 4. Encrypt if sensitive
-		// 5. DBAdapter.Save(note)
-		fmt.Println("not implemented yet")
+		content := strings.Join(args, " ")
+
+		if content == "" {
+			var err error
+			content, err = openEditor()
+			if err != nil {
+				return fmt.Errorf("open editor: %w", err)
+			}
+		}
+
+		content = strings.TrimSpace(content)
+		if content == "" {
+			return fmt.Errorf("no content provided")
+		}
+
+		c, err := getContainer()
+		if err != nil {
+			return err
+		}
+
+		opts := core.AddOptions{
+			DefaultSensitive: cfg.Defaults.Sensitive,
+		}
+		opts.Category = addCategory
+		opts.Tags = addTags
+
+		switch {
+		case addSensitive:
+			t := true
+			opts.IsSensitive = &t
+		case addNoSensitive:
+			f := false
+			opts.IsSensitive = &f
+		}
+
+		note, err := c.Notes.Add(cmd.Context(), content, opts)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("  category=%s  tags=[%s]  sensitive=%v\n",
+			note.Category, strings.Join(note.Tags, ", "), note.IsSensitive)
+		fmt.Printf("  saved  id=%s\n", note.ID[:8])
 		return nil
 	},
 }
@@ -45,4 +86,40 @@ func init() {
 	addCmd.Flags().BoolVar(&addSensitive, "sensitive", false, "Force mark as sensitive")
 	addCmd.Flags().BoolVar(&addNoSensitive, "no-sensitive", false, "Force mark as not sensitive")
 	addCmd.MarkFlagsMutuallyExclusive("sensitive", "no-sensitive")
+}
+
+func openEditor() (string, error) {
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vi"
+	}
+	tmp, err := os.CreateTemp("", "inode-*.txt")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmp.Name())
+	tmp.Close()
+
+	c := exec.Command(editor, tmp.Name())
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// prompt reads a y/N confirmation from stdin.
+func prompt(question string) bool {
+	fmt.Printf("%s [y/N]: ", question)
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return strings.EqualFold(strings.TrimSpace(scanner.Text()), "y")
+	}
+	return false
 }

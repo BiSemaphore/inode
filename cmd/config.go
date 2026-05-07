@@ -2,8 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var configCmd = &cobra.Command{
@@ -25,10 +29,44 @@ Keys:
   defaults.sensitive   true | false`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(Phase 1): implement config set
-		// Write key=value to ~/.inode/config.toml
-		// Encrypt API keys before writing
-		fmt.Println("not implemented yet")
+		key, value := args[0], args[1]
+
+		allowed := map[string]bool{
+			"llm.backend": true, "llm.model": true, "llm.api_key": true,
+			"embedding.backend": true, "embedding.model": true, "embedding.api_key": true,
+			"db.path": true, "defaults.sensitive": true, "log.level": true,
+		}
+		if !allowed[key] {
+			return fmt.Errorf("unknown config key %q", key)
+		}
+
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		configDir := filepath.Join(home, ".inode")
+		if err := os.MkdirAll(configDir, 0700); err != nil {
+			return err
+		}
+
+		v := viper.New()
+		v.SetConfigName("config")
+		v.SetConfigType("toml")
+		v.AddConfigPath(configDir)
+		_ = v.ReadInConfig()
+
+		v.Set(key, value)
+
+		configPath := filepath.Join(configDir, "config.toml")
+		if err := v.WriteConfigAs(configPath); err != nil {
+			return fmt.Errorf("write config: %w", err)
+		}
+
+		displayValue := value
+		if strings.HasSuffix(key, "api_key") {
+			displayValue = redact(value)
+		}
+		fmt.Printf("set %s = %s\n", key, displayValue)
 		return nil
 	},
 }

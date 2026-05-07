@@ -5,11 +5,15 @@ import (
 	"os"
 
 	"github.com/shahid-io/inode/internal/config"
+	"github.com/shahid-io/inode/internal/core"
 	"github.com/shahid-io/inode/internal/version"
 	"github.com/spf13/cobra"
 )
 
-var cfg *config.Config
+var (
+	cfg       *config.Config
+	container *core.Container
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "inode",
@@ -51,7 +55,18 @@ func initConfig() {
 	var err error
 	cfg, err = config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// getContainer lazily builds the service container on first use.
+// Commands that need adapters call this; config-only commands (version, config show) do not.
+func getContainer() (*core.Container, error) {
+	if container != nil {
+		return container, nil
+	}
+	var err error
+	container, err = core.NewContainer(cfg)
+	return container, err
 }

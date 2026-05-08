@@ -14,6 +14,10 @@ type Note struct {
 	Embedding    []float32 // voyage-3: 1024 dims
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+
+	// Distance is the L2 distance from the query vector when this note was
+	// returned by a similarity search. 0 if not from a search. Not persisted.
+	Distance float32
 }
 
 // Categories defines the predefined set of note categories.

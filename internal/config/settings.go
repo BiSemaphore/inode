@@ -14,7 +14,16 @@ type Config struct {
 	Embedding EmbeddingConfig `mapstructure:"embedding"`
 	DB        DBConfig        `mapstructure:"db"`
 	Defaults  DefaultsConfig  `mapstructure:"defaults"`
+	Search    SearchConfig    `mapstructure:"search"`
 	Log       LogConfig       `mapstructure:"log"`
+}
+
+// SearchConfig tunes the RAG retrieval pipeline.
+type SearchConfig struct {
+	// MaxDistance drops notes whose L2 distance exceeds this value (0 = use built-in default, <0 = disable).
+	MaxDistance float32 `mapstructure:"max_distance"`
+	// TopK is the number of nearest-neighbour candidates fetched before threshold filtering (0 = use built-in default).
+	TopK int `mapstructure:"top_k"`
 }
 
 type LLMConfig struct {
@@ -90,6 +99,8 @@ func Load() (*Config, error) {
 	v.SetDefault("embedding.dimension", 768)
 	v.SetDefault("db.path", filepath.Join(configDir, "notes.db"))
 	v.SetDefault("defaults.sensitive", true)
+	v.SetDefault("search.max_distance", 1.0)
+	v.SetDefault("search.top_k", 5)
 	v.SetDefault("log.level", "info")
 
 	var cfg Config

@@ -1,6 +1,6 @@
 module github.com/shahid-io/inode
 
-go 1.25.6
+go 1.25.0
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.41.0

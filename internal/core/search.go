@@ -10,7 +10,17 @@ import (
 	"github.com/shahid-io/inode/internal/model"
 )
 
-const defaultTopK = 5
+const (
+	defaultTopK = 5
+
+	// defaultMaxDistance is the L2-distance ceiling for considering a note
+	// relevant to the query. Embedding vectors from Voyage and Ollama
+	// nomic-embed-text are L2-normalised, so distance ∈ [0, 2]:
+	//   0.0 → identical, 1.0 → cos_sim 0.5, 1.4 → orthogonal.
+	// 1.0 filters out clearly off-topic matches while keeping moderately
+	// related ones. Override via SearchOptions.MaxDistance or config.
+	defaultMaxDistance = 1.0
+)
 
 // SearchResult holds both the LLM-generated answer and the raw notes used as context.
 type SearchResult struct {
@@ -26,19 +36,30 @@ type SearchResult struct {
 //  3. Decrypt sensitive notes in memory
 //  4. Inject notes as context → Claude generates answer
 type SearchService struct {
-	db        db.Adapter
-	embedding embedding.Adapter
-	llm       llm.Adapter
-	keyMgr    *KeyManager
+	db          db.Adapter
+	embedding   embedding.Adapter
+	llm         llm.Adapter
+	keyMgr      *KeyManager
+	maxDistance float32 // service-level default; per-call override via SearchOptions
+	topK        int     // service-level default; per-call override via SearchOptions
 }
 
 // NewSearchService creates a SearchService with all required dependencies.
-func NewSearchService(dbAdapter db.Adapter, embAdapter embedding.Adapter, llmAdapter llm.Adapter, keyMgr *KeyManager) *SearchService {
+// maxDistance and topK supply service-level defaults; pass 0 to use built-ins.
+func NewSearchService(dbAdapter db.Adapter, embAdapter embedding.Adapter, llmAdapter llm.Adapter, keyMgr *KeyManager, maxDistance float32, topK int) *SearchService {
+	if maxDistance == 0 {
+		maxDistance = defaultMaxDistance
+	}
+	if topK <= 0 {
+		topK = defaultTopK
+	}
 	return &SearchService{
-		db:        dbAdapter,
-		embedding: embAdapter,
-		llm:       llmAdapter,
-		keyMgr:    keyMgr,
+		db:          dbAdapter,
+		embedding:   embAdapter,
+		llm:         llmAdapter,
+		keyMgr:      keyMgr,
+		maxDistance: maxDistance,
+		topK:        topK,
 	}
 }
 
@@ -47,6 +68,10 @@ type SearchOptions struct {
 	TopK     int
 	Category string
 	Tags     []string
+
+	// MaxDistance drops notes whose L2 distance exceeds this value.
+	// 0 means use the service default; negative disables filtering entirely.
+	MaxDistance float32
 }
 
 // Search embeds the query, retrieves top-K notes, decrypts them,
@@ -58,7 +83,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 
 	topK := opts.TopK
 	if topK <= 0 {
-		topK = defaultTopK
+		topK = s.topK
 	}
 
 	// Step 1: embed the query.
@@ -76,6 +101,11 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 	if err != nil {
 		return nil, fmt.Errorf("vector search: %w", err)
 	}
+
+	// Step 2b: drop notes beyond the relevance threshold so weak matches
+	// never reach the LLM (which would otherwise answer "no match" while
+	// the CLI still printed them as Sources).
+	notes = filterByDistance(notes, s.thresholdFor(opts))
 
 	if len(notes) == 0 {
 		return &SearchResult{Answer: "No relevant notes found.", Notes: nil}, nil
@@ -97,6 +127,30 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		Answer: answer,
 		Notes:  decrypted,
 	}, nil
+}
+
+// thresholdFor resolves the effective max-distance: caller override wins,
+// otherwise the service default. A negative value disables filtering.
+func (s *SearchService) thresholdFor(opts SearchOptions) float32 {
+	if opts.MaxDistance != 0 {
+		return opts.MaxDistance
+	}
+	return s.maxDistance
+}
+
+// filterByDistance drops notes whose Distance exceeds threshold.
+// A negative threshold passes everything through.
+func filterByDistance(notes []*model.Note, threshold float32) []*model.Note {
+	if threshold < 0 {
+		return notes
+	}
+	out := notes[:0]
+	for _, n := range notes {
+		if n.Distance <= threshold {
+			out = append(out, n)
+		}
+	}
+	return out
 }
 
 // decryptNotes returns copies of notes with ContentPlain populated.

@@ -51,8 +51,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    # golangci-lint does not yet support Go 1.25 — skip until a compatible version ships
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -64,6 +62,6 @@ jobs:
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.12.2

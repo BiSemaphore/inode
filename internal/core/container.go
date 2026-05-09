@@ -74,7 +74,7 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	// Core services.
 	tagger := NewTaggerService(llmAdapter)
 	notes := NewNoteService(dbAdapter, embAdapter, tagger, keyMgr)
-	search := NewSearchService(dbAdapter, embAdapter, llmAdapter, keyMgr)
+	search := NewSearchService(dbAdapter, embAdapter, llmAdapter, keyMgr, cfg.Search.MaxDistance, cfg.Search.TopK)
 
 	return &Container{
 		Notes:  notes,

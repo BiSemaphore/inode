@@ -155,7 +155,8 @@ func (a *SQLiteAdapter) Delete(ctx context.Context, id string) error {
 	return tx.Commit()
 }
 
-// SearchSimilar returns top-K notes by cosine similarity to vec.
+// SearchSimilar returns top-K notes by L2 distance to vec, in ascending order.
+// Each returned note has its Distance field populated.
 func (a *SQLiteAdapter) SearchSimilar(ctx context.Context, vec []float32, topK int, filters Filters) ([]*model.Note, error) {
 	vecBytes, err := sqlite_vec.SerializeFloat32(vec)
 	if err != nil {
@@ -163,11 +164,11 @@ func (a *SQLiteAdapter) SearchSimilar(ctx context.Context, vec []float32, topK i
 	}
 
 	query := `
-		SELECT n.id, n.content_enc, n.content_plain, n.summary, n.category, n.tags, n.is_sensitive, n.created_at, n.updated_at
+		SELECT e.distance, n.id, n.content_enc, n.content_plain, n.summary, n.category, n.tags, n.is_sensitive, n.created_at, n.updated_at
 		FROM note_embeddings e
 		JOIN notes n ON n.id = e.note_id
 		WHERE e.embedding MATCH ? AND k = ?
-		ORDER BY distance`
+		ORDER BY e.distance`
 
 	rows, err := a.db.QueryContext(ctx, query, vecBytes, topK)
 	if err != nil {
@@ -175,7 +176,7 @@ func (a *SQLiteAdapter) SearchSimilar(ctx context.Context, vec []float32, topK i
 	}
 	defer rows.Close()
 
-	return scanNotes(rows, filters)
+	return scanScoredNotes(rows, filters)
 }
 
 // List returns notes matching filters with pagination.
@@ -255,6 +256,41 @@ func scanNotes(rows *sql.Rows, filters Filters) ([]*model.Note, error) {
 			return nil, err
 		}
 
+		n.IsSensitive = isSensitive == 1
+		if err := json.Unmarshal([]byte(tagsJSON), &n.Tags); err != nil {
+			n.Tags = []string{}
+		}
+		n.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		n.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+
+		if matchesTagFilter(&n, filters.Tags) {
+			notes = append(notes, &n)
+		}
+	}
+	return notes, rows.Err()
+}
+
+// scanScoredNotes scans rows from a similarity search where the first column is the distance.
+func scanScoredNotes(rows *sql.Rows, filters Filters) ([]*model.Note, error) {
+	var notes []*model.Note
+	for rows.Next() {
+		var n model.Note
+		var distance float32
+		var tagsJSON string
+		var createdAt, updatedAt string
+		var isSensitive int
+
+		err := rows.Scan(
+			&distance,
+			&n.ID, &n.ContentEnc, &n.ContentPlain,
+			&n.Summary, &n.Category, &tagsJSON,
+			&isSensitive, &createdAt, &updatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		n.Distance = distance
 		n.IsSensitive = isSensitive == 1
 		if err := json.Unmarshal([]byte(tagsJSON), &n.Tags); err != nil {
 			n.Tags = []string{}

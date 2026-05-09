@@ -37,8 +37,13 @@ Examples:
 			return err
 		}
 
+		// The answer is always printed. The LLM is responsible for saying
+		// "no relevant notes found" when the retrieved candidates didn't help.
+		fmt.Println(result.Answer)
+
+		// Sources block appears only when the LLM actually used at least one
+		// note — Search has already filtered Notes down to those.
 		if len(result.Notes) == 0 {
-			fmt.Println("No relevant notes found.")
 			return nil
 		}
 
@@ -51,7 +56,6 @@ Examples:
 			}
 		}
 
-		fmt.Println(result.Answer)
 		fmt.Println()
 		fmt.Printf("── Sources (%d note(s)) ──\n", len(notes))
 		for _, n := range notes {

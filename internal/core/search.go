@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/shahid-io/inode/internal/adapters/db"
 	"github.com/shahid-io/inode/internal/adapters/embedding"
@@ -128,16 +129,41 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		return nil, fmt.Errorf("decrypt notes: %w", err)
 	}
 
-	// Step 4: LLM generates answer from note context.
+	// Step 4: LLM generates an answer and tells us which notes it actually used.
 	answer, err := s.llm.Answer(ctx, query, decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("llm answer: %w", err)
 	}
 
+	// Step 5: filter the source list down to notes the LLM said it relied on.
+	// When the LLM rejected every candidate (Matched=false), we hide the
+	// "Sources" list entirely — the answer alone is shown.
+	sources := filterByMatchedIDs(decrypted, answer.UsedNoteIDs)
+
 	return &SearchResult{
-		Answer: answer,
-		Notes:  decrypted,
+		Answer: answer.Answer,
+		Notes:  sources,
 	}, nil
+}
+
+// filterByMatchedIDs returns only the notes whose ID is matched by one of
+// the (typically short-prefix) IDs the LLM reported using. An ID matches a
+// note if the note's full ID has the LLM-supplied ID as a prefix —
+// accommodating both full-UUID and 8-char-short-ID outputs from the model.
+func filterByMatchedIDs(notes []*model.Note, matchedIDs []string) []*model.Note {
+	if len(matchedIDs) == 0 {
+		return nil
+	}
+	out := make([]*model.Note, 0, len(matchedIDs))
+	for _, n := range notes {
+		for _, mid := range matchedIDs {
+			if mid != "" && strings.HasPrefix(n.ID, mid) {
+				out = append(out, n)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // thresholdFor resolves the effective max-distance: caller override wins,

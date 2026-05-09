@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="inode — a personal knowledge base that runs on your laptop">
+  <!-- paper background -->
+  <rect width="1280" height="420" fill="#faf6ec"/>
+
+  <!-- subtle paper-grain dots -->
+  <defs>
+    <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.4" fill="#78502e" fill-opacity="0.06"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="60%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#785030" stop-opacity="0.06"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="420" fill="url(#grain)"/>
+  <rect width="1280" height="420" fill="url(#vignette)"/>
+
+  <!-- hand-drawn outer frame, intentionally wobbly -->
+  <path d="M 16,12 Q 11,8 18,8 L 320,9 640,7 960,9 1264,8 Q 1271,9 1270,16 L 1271,200 1270,400 Q 1270,412 1262,411 L 960,412 640,410 320,412 18,411 Q 10,412 12,402 L 11,200 12,16 Z"
+        fill="none" stroke="#1a1f2e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ─────────────── LEFT BLOCK: logo + wordmark + tagline ─────────────── -->
+
+  <!-- logo mark (scaled-up, positioned ~80,90) -->
+  <g transform="translate(80, 90)">
+    <path d="M 28,22 Q 24,22 24,27 L 24,60 23,98 Q 24,104 30,104 L 60,103 96,104 Q 102,104 102,99 L 102,60 103,22 Q 102,17 96,18 L 60,19 28,22 Z"
+          fill="none" stroke="#1a1f2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="62" cy="60" r="11" fill="#1a1f2e"/>
+    <path d="M 70,53 Q 82,42 92,28" fill="none" stroke="#1a1f2e" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M 68,68 Q 80,80 91,90" fill="none" stroke="#1a1f2e" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="94" cy="26" r="3.6" fill="none" stroke="#1a1f2e" stroke-width="2.2"/>
+    <circle cx="92" cy="92" r="3.6" fill="none" stroke="#1a1f2e" stroke-width="2.2"/>
+  </g>
+
+  <!-- wordmark "inode" — italic serif feel via skew + Times -->
+  <text x="220" y="170" font-family="'Cormorant Garamond', 'EB Garamond', Georgia, 'Times New Roman', serif"
+        font-style="italic" font-weight="500" font-size="120" fill="#1a1f2e" letter-spacing="1">
+    inode
+  </text>
+
+  <!-- tagline (handwritten-feel via cursive fallback) -->
+  <text x="220" y="226" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="34" fill="#2d3548">
+    a personal knowledge base
+  </text>
+  <text x="220" y="266" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="34" fill="#2d3548">
+    that runs on your laptop.
+  </text>
+
+  <!-- hand-drawn red underline beneath the wordmark -->
+  <path d="M 222,185 Q 280,182 360,184 T 480,186 Q 510,185 530,187"
+        fill="none" stroke="#b8472d" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- meta chips: local-first / open source / zero cost -->
+  <g transform="translate(220, 320)">
+    <!-- chip 1 -->
+    <rect x="0" y="0" width="148" height="42" rx="21" fill="none" stroke="#3d6b4a" stroke-width="2"/>
+    <text x="74" y="29" text-anchor="middle" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="26" fill="#3d6b4a">
+      local-first
+    </text>
+    <!-- chip 2 -->
+    <rect x="160" y="0" width="170" height="42" rx="21" fill="none" stroke="#2d4f6b" stroke-width="2"/>
+    <text x="245" y="29" text-anchor="middle" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="26" fill="#2d4f6b">
+      open source
+    </text>
+    <!-- chip 3 -->
+    <rect x="342" y="0" width="160" height="42" rx="21" fill="none" stroke="#b8472d" stroke-width="2"/>
+    <text x="422" y="29" text-anchor="middle" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="26" fill="#b8472d">
+      zero cost
+    </text>
+  </g>
+
+  <!-- ─────────────── RIGHT BLOCK: mini terminal demo ─────────────── -->
+
+  <g transform="translate(760, 80)">
+    <!-- terminal window frame with shadow -->
+    <rect x="6" y="6" width="450" height="260" rx="8" fill="#c4bfb6"/>
+    <rect x="0" y="0" width="450" height="260" rx="8" fill="#f3ecdc" stroke="#1a1f2e" stroke-width="2.2"/>
+
+    <!-- titlebar -->
+    <rect x="0" y="0" width="450" height="34" rx="8" fill="#1a1f2e"/>
+    <rect x="0" y="20" width="450" height="14" fill="#1a1f2e"/>
+    <!-- traffic-light dots -->
+    <circle cx="18" cy="17" r="5.5" fill="#ff6058"/>
+    <circle cx="36" cy="17" r="5.5" fill="#ffbd2e"/>
+    <circle cx="54" cy="17" r="5.5" fill="#28ca42"/>
+    <text x="225" y="22" text-anchor="middle" font-family="ui-monospace, 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace" font-size="13" fill="#e8dfca">
+      ~/notes — inode get
+    </text>
+
+    <!-- terminal body lines -->
+    <g font-family="ui-monospace, 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace" font-size="14">
+      <text x="20" y="68" fill="#3d6b4a">$</text>
+      <text x="38" y="68" fill="#1a1f2e">inode <tspan fill="#2d4f6b" font-weight="600">get</tspan> <tspan fill="#b8472d">"pg url"</tspan></text>
+
+      <!-- spinner frame placeholder (faint, italic-feel) -->
+      <text x="20" y="98" fill="#8b8680" font-style="italic">⠋ thinking…</text>
+
+      <!-- answer (bold) -->
+      <text x="20" y="132" fill="#1a1f2e" font-weight="700">postgres://admin:s3cr3t@db.staging.internal:5432/app</text>
+
+      <!-- separator (faint) -->
+      <text x="20" y="168" fill="#8b8680">── Sources (1 note(s)) ──</text>
+
+      <!-- source line: id, summary, [category], [tags], [sensitive] -->
+      <text x="20" y="198" fill="#1a1f2e">
+        <tspan fill="#2d4f6b">#a990fcd4</tspan>
+        <tspan>  Staging Postgres URL  </tspan>
+        <tspan fill="#2d4f6b">[references]</tspan>
+        <tspan fill="#3d6b4a"> [postgres, staging, db]</tspan>
+        <tspan fill="#b8472d" font-weight="700">  [sensitive]</tspan>
+      </text>
+
+      <!-- next prompt with cursor -->
+      <text x="20" y="232" fill="#3d6b4a">$</text>
+      <rect x="40" y="222" width="9" height="14" fill="#1a1f2e"/>
+    </g>
+  </g>
+
+  <!-- small handwritten margin-note bottom-right -->
+  <text x="1240" y="395" text-anchor="end" font-family="'Caveat', 'Comic Sans MS', cursive" font-size="22" fill="#8b8680" font-style="italic">
+    @binary.semaphore · v0.1.0+
+  </text>
+</svg>

@@ -78,14 +78,23 @@ Return JSON:
 }
 
 // Answer performs RAG generation — retrieved notes as context, Claude answers.
-func (c *ClaudeAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (string, error) {
+// Returns a structured result so the caller knows whether the notes were
+// actually useful and which ones the model relied on.
+func (c *ClaudeAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (AnswerResult, error) {
 	if len(notes) == 0 {
-		return "No relevant notes found.", nil
+		return AnswerResult{Answer: "No relevant notes found.", Matched: false}, nil
 	}
 
-	prompt := fmt.Sprintf(`You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided below.
-If the answer is not in the notes, say so clearly. Do not invent information.
-For sensitive values, include them as-is — the CLI handles masking.
+	prompt := fmt.Sprintf(`You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided below. For sensitive values, include them as-is — the CLI handles masking.
+
+Return ONLY a JSON object, no markdown:
+{"matched": <true|false>, "answer": "<your answer>", "used_note_ids": ["<short_id>", ...]}
+
+- matched: true if any note answers the query.
+- answer: your natural-language reply, using the actual values from the notes when the answer is there.
+- used_note_ids: only the notes you actually drew from to write your answer. Skip every note you did not reference.
+
+Use the 8-char id from each "--- Note N (id: XXXXXXXX, ...) ---" header.
 
 Notes:
 %s
@@ -99,10 +108,10 @@ Query: %s`, buildContext(notes), query)
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("claude answer: %w", err)
+		return AnswerResult{}, fmt.Errorf("claude answer: %w", err)
 	}
 
-	return textFromMessage(msg), nil
+	return parseAnswerJSON(textFromMessage(msg))
 }
 
 // Summarize returns a one-line description of note content.
@@ -131,6 +140,32 @@ func textFromMessage(msg *anthropic.Message) string {
 		}
 	}
 	return ""
+}
+
+// parseAnswerJSON parses the structured answer JSON returned by an LLM.
+// Defensive: validates internal consistency (matched=true must come with
+// at least one used_note_id; otherwise the result is coerced to not-matched).
+func parseAnswerJSON(raw string) (AnswerResult, error) {
+	body := extractJSON(raw)
+	var parsed struct {
+		Matched     bool     `json:"matched"`
+		Answer      string   `json:"answer"`
+		UsedNoteIDs []string `json:"used_note_ids"`
+	}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return AnswerResult{}, fmt.Errorf("parse answer response %q: %w", body, err)
+	}
+
+	answer := strings.TrimSpace(parsed.Answer)
+	if answer == "" {
+		answer = "No relevant notes found."
+	}
+
+	matched := parsed.Matched && len(parsed.UsedNoteIDs) > 0
+	if !matched {
+		return AnswerResult{Answer: answer, Matched: false}, nil
+	}
+	return AnswerResult{Answer: answer, Matched: true, UsedNoteIDs: parsed.UsedNoteIDs}, nil
 }
 
 // extractJSON strips markdown fences and extracts the first JSON object.
@@ -170,8 +205,12 @@ func buildContext(notes []*model.Note) string {
 		if content == "" && len(n.ContentEnc) > 0 {
 			content = "[encrypted]"
 		}
+		shortID := n.ID
+		if len(shortID) > 8 {
+			shortID = shortID[:8]
+		}
 		fmt.Fprintf(&sb, "--- Note %d (id: %s, category: %s, tags: %s) ---\n%s\n\n",
-			i+1, n.ID, n.Category, strings.Join(n.Tags, ", "), content)
+			i+1, shortID, n.Category, strings.Join(n.Tags, ", "), content)
 	}
 	return sb.String()
 }

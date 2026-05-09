@@ -138,19 +138,34 @@ Return JSON:
 }
 
 // Answer performs RAG generation using retrieved notes as context.
-func (o *OllamaAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (string, error) {
+// Returns a structured result so the caller knows whether the notes were
+// actually useful and which ones the model relied on.
+func (o *OllamaAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (AnswerResult, error) {
 	if len(notes) == 0 {
-		return "No relevant notes found.", nil
+		return AnswerResult{Answer: "No relevant notes found.", Matched: false}, nil
 	}
 
-	system := `You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided. If the answer is not in the notes, say so clearly. Do not invent information.`
-	user := fmt.Sprintf("Notes:\n%s\nQuery: %s", buildContext(notes), query)
+	system := `You are a personal knowledge assistant. Always respond with valid JSON only. No markdown, no prose outside JSON.`
+	user := fmt.Sprintf(`Answer the user's query using ONLY the notes below.
 
-	answer, err := o.chat(ctx, system, user, false)
+Return JSON exactly in this shape:
+{"matched": <true|false>, "answer": "<your answer>", "used_note_ids": ["<short_id>", ...]}
+
+- matched: true if any note answers the query.
+- answer: your natural-language reply, using the actual values from the notes when the answer is there.
+- used_note_ids: only the notes you actually drew from to write your answer. Skip every note you did not reference.
+
+Use the 8-char id from each "--- Note N (id: XXXXXXXX, ...) ---" header.
+
+Notes:
+%s
+Query: %s`, buildContext(notes), query)
+
+	raw, err := o.chat(ctx, system, user, true)
 	if err != nil {
-		return "", fmt.Errorf("ollama answer: %w", err)
+		return AnswerResult{}, fmt.Errorf("ollama answer: %w", err)
 	}
-	return strings.TrimSpace(answer), nil
+	return parseAnswerJSON(raw)
 }
 
 // Summarize returns a one-line description of note content.

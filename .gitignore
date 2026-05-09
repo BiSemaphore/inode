@@ -45,3 +45,7 @@ coverage.html
 
 # goreleaser
 .goreleaser-local.yml
+
+# Claude Code local artifacts
+.claude/worktrees/
+.claude/settings.local.json

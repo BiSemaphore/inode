@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/shahid-io/inode/internal/adapters/db"
 	"github.com/shahid-io/inode/internal/adapters/embedding"
@@ -29,12 +30,15 @@ type SearchResult struct {
 }
 
 // SearchService implements the RAG pipeline for natural language queries.
+// All external concerns are pluggable via adapters — Voyage/Ollama for
+// embeddings, Claude/Ollama for the LLM, SQLite/(future)Postgres for storage.
 //
 // Flow:
-//  1. Embed the user query (Voyage AI)
-//  2. Vector similarity search → top-K notes (SQLite/sqlite-vec)
-//  3. Decrypt sensitive notes in memory
-//  4. Inject notes as context → Claude generates answer
+//  1. Embed the user query (embedding adapter)
+//  2. Vector similarity search → top-K notes (DB adapter)
+//  3. Drop notes beyond the relevance threshold
+//  4. Decrypt sensitive notes in memory
+//  5. Inject remaining notes as context → answer (LLM adapter)
 type SearchService struct {
 	db          db.Adapter
 	embedding   embedding.Adapter
@@ -69,8 +73,16 @@ type SearchOptions struct {
 	Category string
 	Tags     []string
 
-	// MaxDistance drops notes whose L2 distance exceeds this value.
-	// 0 means use the service default; negative disables filtering entirely.
+	// MaxDistance is the L2-distance ceiling for keeping a candidate note.
+	//
+	//   = 0  →  use the service default (typically 1.0)
+	//   > 0  →  keep notes with Distance <= MaxDistance
+	//   < 0  →  disable filtering entirely (return whatever the DB returned)
+	//
+	// The "= 0 means default" overload means an *exact* 0 threshold cannot be
+	// expressed via this field. In practice this is fine: with L2-normalised
+	// embeddings, bit-exact distance 0 implies bit-identical content, which is
+	// not a useful retrieval target.
 	MaxDistance float32
 }
 
@@ -117,16 +129,41 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		return nil, fmt.Errorf("decrypt notes: %w", err)
 	}
 
-	// Step 4: LLM generates answer from note context.
+	// Step 4: LLM generates an answer and tells us which notes it actually used.
 	answer, err := s.llm.Answer(ctx, query, decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("llm answer: %w", err)
 	}
 
+	// Step 5: filter the source list down to notes the LLM said it relied on.
+	// When the LLM rejected every candidate (Matched=false), we hide the
+	// "Sources" list entirely — the answer alone is shown.
+	sources := filterByMatchedIDs(decrypted, answer.UsedNoteIDs)
+
 	return &SearchResult{
-		Answer: answer,
-		Notes:  decrypted,
+		Answer: answer.Answer,
+		Notes:  sources,
 	}, nil
+}
+
+// filterByMatchedIDs returns only the notes whose ID is matched by one of
+// the (typically short-prefix) IDs the LLM reported using. An ID matches a
+// note if the note's full ID has the LLM-supplied ID as a prefix —
+// accommodating both full-UUID and 8-char-short-ID outputs from the model.
+func filterByMatchedIDs(notes []*model.Note, matchedIDs []string) []*model.Note {
+	if len(matchedIDs) == 0 {
+		return nil
+	}
+	out := make([]*model.Note, 0, len(matchedIDs))
+	for _, n := range notes {
+		for _, mid := range matchedIDs {
+			if mid != "" && strings.HasPrefix(n.ID, mid) {
+				out = append(out, n)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // thresholdFor resolves the effective max-distance: caller override wins,
@@ -138,13 +175,14 @@ func (s *SearchService) thresholdFor(opts SearchOptions) float32 {
 	return s.maxDistance
 }
 
-// filterByDistance drops notes whose Distance exceeds threshold.
-// A negative threshold passes everything through.
+// filterByDistance returns a new slice containing only notes whose Distance
+// is within threshold. A negative threshold disables filtering — the input
+// slice is returned as-is. The input is never mutated.
 func filterByDistance(notes []*model.Note, threshold float32) []*model.Note {
 	if threshold < 0 {
 		return notes
 	}
-	out := notes[:0]
+	out := make([]*model.Note, 0, len(notes))
 	for _, n := range notes {
 		if n.Distance <= threshold {
 			out = append(out, n)

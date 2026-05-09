@@ -151,9 +151,11 @@ func (o *OllamaAdapter) Answer(ctx context.Context, query string, notes []*model
 Return JSON exactly in this shape:
 {"matched": <true|false>, "answer": "<your answer>", "used_note_ids": ["<short_id>", ...]}
 
-Set "matched" to true only if at least one note actually contains the answer.
-Set "used_note_ids" to the short IDs (as printed in the "--- Note N (id: XXXXXXXX, ...) ---" headers) of the notes you used. Empty array if none.
-If "matched" is false, "answer" should briefly say the information is not in the notes.
+- matched: true if any note answers the query.
+- answer: your natural-language reply, using the actual values from the notes when the answer is there.
+- used_note_ids: only the notes you actually drew from to write your answer. Skip every note you did not reference.
+
+Use the 8-char id from each "--- Note N (id: XXXXXXXX, ...) ---" header.
 
 Notes:
 %s

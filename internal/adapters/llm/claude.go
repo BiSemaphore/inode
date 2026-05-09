@@ -85,21 +85,16 @@ func (c *ClaudeAdapter) Answer(ctx context.Context, query string, notes []*model
 		return AnswerResult{Answer: "No relevant notes found.", Matched: false}, nil
 	}
 
-	prompt := fmt.Sprintf(`You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided below.
-For sensitive values, include them as-is — the CLI handles masking.
+	prompt := fmt.Sprintf(`You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided below. For sensitive values, include them as-is — the CLI handles masking.
 
-Return ONLY a JSON object — no markdown, no prose outside JSON:
-{
-  "matched": true | false,
-  "answer": "<your natural-language answer to the user's query>",
-  "used_note_ids": ["<short_id>", ...]
-}
+Return ONLY a JSON object, no markdown:
+{"matched": <true|false>, "answer": "<your answer>", "used_note_ids": ["<short_id>", ...]}
 
-Set "matched" to true only if at least one of the notes actually contains the answer.
-Set "used_note_ids" to the short id of every note you used (as printed in the
-"--- Note N (id: XXXXXXXX, ...) ---" headers below). Empty array if none.
-If "matched" is false, your "answer" should briefly say the information was
-not in the notes.
+- matched: true if any note answers the query.
+- answer: your natural-language reply, using the actual values from the notes when the answer is there.
+- used_note_ids: only the notes you actually drew from to write your answer. Skip every note you did not reference.
+
+Use the 8-char id from each "--- Note N (id: XXXXXXXX, ...) ---" header.
 
 Notes:
 %s

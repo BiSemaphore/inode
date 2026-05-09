@@ -13,8 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # windows-latest excluded: sqlite3.h not on MinGW include path by default
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +27,30 @@ jobs:
       - name: Install C compiler (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y gcc
+
+      # Windows runners ship with MinGW but no sqlite3 headers. MSYS2 supplies
+      # both gcc (matched to its sqlite3 build) and the headers/libs the
+      # sqlite-vec CGO bindings need to compile against. path-type:inherit
+      # makes the MSYS2 binaries available to Go's toolchain when it shells
+      # out to gcc from PowerShell — no `shell: msys2 {0}` per step.
+      - name: Set up MSYS2 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-pkg-config
+
+      - name: Configure CGO (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          echo "CGO_CFLAGS=-I/mingw64/include" >> $GITHUB_ENV
+          echo "CGO_LDFLAGS=-L/mingw64/lib" >> $GITHUB_ENV
 
       - name: Download dependencies
         run: go mod download

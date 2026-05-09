@@ -29,18 +29,46 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           cache: true
 
       - name: Install GCC (Linux arm64 cross-compiler)
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
-      - name: Run GoReleaser (split)
+      # Windows release builds need the same MSYS2 + sqlite3 toolchain as CI.
+      # GoReleaser is invoked via shell: msys2 so /mingw64/include is on
+      # gcc's default path when CGO compiles sqlite-vec.
+      - name: Set up MSYS2 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-pkg-config
+
+      - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
+          install-only: true
           version: latest
-          args: release --split --clean
+
+      - name: Run GoReleaser (Linux / macOS)
+        if: matrix.os != 'windows-latest'
+        run: goreleaser release --split --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+
+      - name: Run GoReleaser (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: goreleaser release --split --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CGO_ENABLED: 1
@@ -64,7 +92,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
 
       - uses: actions/download-artifact@v4
         with:

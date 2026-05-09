@@ -84,6 +84,11 @@ type SearchOptions struct {
 	// embeddings, bit-exact distance 0 implies bit-identical content, which is
 	// not a useful retrieval target.
 	MaxDistance float32
+
+	// OnStep is an optional progress hook invoked at the start of each
+	// pipeline phase ("embedding", "searching", "answering"). Used by the
+	// CLI to update a spinner label. Must be cheap and non-blocking.
+	OnStep func(step string)
 }
 
 // Search embeds the query, retrieves top-K notes, decrypts them,
@@ -98,13 +103,20 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		topK = s.topK
 	}
 
+	step := opts.OnStep
+	if step == nil {
+		step = func(string) {}
+	}
+
 	// Step 1: embed the query.
+	step("embedding query")
 	vec, err := s.embedding.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
 
 	// Step 2: vector similarity search.
+	step("searching")
 	filters := db.Filters{
 		Category: opts.Category,
 		Tags:     opts.Tags,
@@ -130,6 +142,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 	}
 
 	// Step 4: LLM generates an answer and tells us which notes it actually used.
+	step("thinking")
 	answer, err := s.llm.Answer(ctx, query, decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("llm answer: %w", err)

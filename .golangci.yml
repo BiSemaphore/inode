@@ -1,0 +1,14 @@
+version: "2"
+
+linters:
+  default: standard
+  settings:
+    errcheck:
+      exclude-functions:
+        # Idiomatic deferred cleanups whose error is not actionable.
+        - (*database/sql.DB).Close
+        - (*database/sql.Tx).Rollback
+        - (*database/sql.Rows).Close
+        - (io.ReadCloser).Close
+        - (*os.File).Close
+        - os.Remove

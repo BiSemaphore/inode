@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="inode logo">
+  <!-- paper background -->
+  <rect width="120" height="120" fill="#faf6ec"/>
+  <!-- hand-drawn frame: slightly wobbly rounded rectangle -->
+  <path d="M 28,22 Q 24,22 24,27 L 24,60 23,98 Q 24,104 30,104 L 60,103 96,104 Q 102,104 102,99 L 102,60 103,22 Q 102,17 96,18 L 60,19 28,22 Z"
+        fill="none" stroke="#1a1f2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- inner solid node -->
+  <circle cx="62" cy="60" r="11" fill="#1a1f2e"/>
+  <!-- two sketchy connection lines (suggesting indexing) -->
+  <path d="M 70,53 Q 82,42 92,28" fill="none" stroke="#1a1f2e" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M 68,68 Q 80,80 91,90" fill="none" stroke="#1a1f2e" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- end-nodes (small open circles) -->
+  <circle cx="94" cy="26" r="3.6" fill="none" stroke="#1a1f2e" stroke-width="2.2"/>
+  <circle cx="92" cy="92" r="3.6" fill="none" stroke="#1a1f2e" stroke-width="2.2"/>
+</svg>

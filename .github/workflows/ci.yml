@@ -13,8 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # windows-latest excluded: sqlite3.h not on MinGW include path by default
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -29,18 +28,56 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y gcc
 
+      # Windows runners ship with MinGW but no sqlite3 headers, and the
+      # default PowerShell context can't resolve POSIX paths like
+      # /mingw64/include when CGO calls gcc. We install the matched
+      # mingw-w64 toolchain via MSYS2 and run the Go build *through*
+      # msys2 {0} so gcc sees its own POSIX filesystem and finds the
+      # headers under /mingw64/include automatically.
+      - name: Set up MSYS2 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-sqlite3
+            mingw-w64-x86_64-pkg-config
+
       - name: Download dependencies
         run: go mod download
 
+      # Two Build / Test pairs — same go commands, different shell. On
+      # Windows the msys2 shell makes gcc's default include path
+      # (/mingw64/include) just work without any CGO_CFLAGS plumbing.
+
       - name: Build
+        if: matrix.os != 'windows-latest'
+        env:
+          CGO_ENABLED: 1
+        run: go build ./...
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
         env:
           CGO_ENABLED: 1
         run: go build ./...
 
       - name: Test
+        if: matrix.os != 'windows-latest'
         env:
           CGO_ENABLED: 1
         run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Test (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        env:
+          CGO_ENABLED: 1
+        run: go test -race ./...
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'

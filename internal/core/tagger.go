@@ -50,7 +50,19 @@ func (t *TaggerService) Classify(ctx context.Context, content string, opts Class
 		return llm.ClassifyResult{}, err
 	}
 
-	// User overrides take precedence over LLM output.
+	// Reject hallucinated categories. The LLM is asked to pick from a fixed
+	// list, but small local models occasionally invent ones that are close
+	// (e.g. "credential", "command-line", "code"). Anything not in the
+	// predefined set falls back to FallbackCategory rather than being
+	// silently persisted and creating retrieval noise later.
+	result.Category = normalise(result.Category)
+	if !model.IsValidCategory(result.Category) {
+		result.Category = model.FallbackCategory
+	}
+
+	// User overrides take precedence over LLM output. We accept whatever
+	// the user typed — they may genuinely want a custom category, in which
+	// case the validation isn't ours to enforce.
 	if opts.Category != "" {
 		result.Category = normalise(opts.Category)
 	}
@@ -64,13 +76,34 @@ func (t *TaggerService) Classify(ctx context.Context, content string, opts Class
 	return result, nil
 }
 
-// defaultTags returns the built-in suggested tags sent to the LLM as hints.
+// defaultTags returns the built-in suggested tags sent to the LLM as
+// classification hints. The LLM is told to use these where they fit and
+// invent new ones otherwise — so this list is a soft vocabulary, not a
+// hard constraint.
+//
+// Curated to cover the common dev-tool landscape without becoming
+// unwieldy. Adding a tag here biases the LLM toward picking it for
+// future notes, which improves consistency across a knowledge base.
 func defaultTags() []string {
 	return []string{
-		"aws", "gcp", "azure", "github", "gitlab", "stripe", "twilio",
-		"docker", "kubernetes", "terraform", "postgres", "mysql", "redis",
-		"python", "golang", "nodejs", "bash", "ssh", "api", "token",
-		"password", "secret", "key", "prod", "dev", "staging",
+		// clouds + infra
+		"aws", "gcp", "azure", "docker", "kubernetes", "terraform", "helm",
+		// databases
+		"postgres", "mysql", "sqlite", "redis", "mongodb", "elasticsearch",
+		// languages
+		"go", "python", "rust", "typescript", "javascript", "bash", "sql",
+		// frameworks
+		"react", "vue", "next", "express", "django", "fastapi",
+		// version control + CI
+		"git", "github", "gitlab", "ci", "cd",
+		// services
+		"stripe", "twilio", "slack", "linear", "datadog", "sentry", "cloudflare",
+		// secrets / auth
+		"api", "token", "password", "secret", "key", "oauth", "jwt", "ssh",
+		// environments
+		"prod", "staging", "dev", "local",
+		// concerns
+		"backup", "monitoring", "logging", "performance", "security", "incident",
 	}
 }
 

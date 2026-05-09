@@ -29,12 +29,15 @@ type SearchResult struct {
 }
 
 // SearchService implements the RAG pipeline for natural language queries.
+// All external concerns are pluggable via adapters — Voyage/Ollama for
+// embeddings, Claude/Ollama for the LLM, SQLite/(future)Postgres for storage.
 //
 // Flow:
-//  1. Embed the user query (Voyage AI)
-//  2. Vector similarity search → top-K notes (SQLite/sqlite-vec)
-//  3. Decrypt sensitive notes in memory
-//  4. Inject notes as context → Claude generates answer
+//  1. Embed the user query (embedding adapter)
+//  2. Vector similarity search → top-K notes (DB adapter)
+//  3. Drop notes beyond the relevance threshold
+//  4. Decrypt sensitive notes in memory
+//  5. Inject remaining notes as context → answer (LLM adapter)
 type SearchService struct {
 	db          db.Adapter
 	embedding   embedding.Adapter
@@ -69,8 +72,16 @@ type SearchOptions struct {
 	Category string
 	Tags     []string
 
-	// MaxDistance drops notes whose L2 distance exceeds this value.
-	// 0 means use the service default; negative disables filtering entirely.
+	// MaxDistance is the L2-distance ceiling for keeping a candidate note.
+	//
+	//   = 0  →  use the service default (typically 1.0)
+	//   > 0  →  keep notes with Distance <= MaxDistance
+	//   < 0  →  disable filtering entirely (return whatever the DB returned)
+	//
+	// The "= 0 means default" overload means an *exact* 0 threshold cannot be
+	// expressed via this field. In practice this is fine: with L2-normalised
+	// embeddings, bit-exact distance 0 implies bit-identical content, which is
+	// not a useful retrieval target.
 	MaxDistance float32
 }
 
@@ -138,13 +149,14 @@ func (s *SearchService) thresholdFor(opts SearchOptions) float32 {
 	return s.maxDistance
 }
 
-// filterByDistance drops notes whose Distance exceeds threshold.
-// A negative threshold passes everything through.
+// filterByDistance returns a new slice containing only notes whose Distance
+// is within threshold. A negative threshold disables filtering — the input
+// slice is returned as-is. The input is never mutated.
 func filterByDistance(notes []*model.Note, threshold float32) []*model.Note {
 	if threshold < 0 {
 		return notes
 	}
-	out := notes[:0]
+	out := make([]*model.Note, 0, len(notes))
 	for _, n := range notes {
 		if n.Distance <= threshold {
 			out = append(out, n)

@@ -12,20 +12,16 @@ builds:
     binary: inode
     env:
       - CGO_ENABLED=1
-      # Linux arm64 cross-compile uses the toolchain installed by the
-      # release workflow (apt-get install gcc-aarch64-linux-gnu).
-      - >-
-        {{- if eq .Arch "arm64" -}} CC=aarch64-linux-gnu-gcc {{- end -}}
-    # v0.2.x publishes Linux binaries only. macOS and Windows users:
-    # `go install github.com/shahid-io/inode@latest`. CGO + sqlite-vec
-    # cross-compile for those targets needs heavier infra (zig / osxcross
-    # for darwin; mingw-w64 cross-tools for windows) than this hobby
-    # project warrants today. Re-add when there's demand.
+    # v0.2.x publishes Linux amd64 only. Other targets (macOS, Windows,
+    # Linux arm64) need cross-compilation infra (mingw-w64, osxcross/zig,
+    # gcc-aarch64-linux-gnu with goreleaser per-arch env) that's heavier
+    # than a solo hobby project warrants right now. Affected users:
+    # `go install github.com/shahid-io/inode@latest`. Re-add archs/OSes
+    # as people actually ask for them.
     goos:
       - linux
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w
       - -X github.com/shahid-io/inode/internal/version.Version={{.Version}}

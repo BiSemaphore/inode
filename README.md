@@ -73,6 +73,23 @@ inode config set embedding.api_key pa-xxxx
 
 These are completely optional. The Ollama path is fully featured.
 
+### Optional: Postgres + pgvector backend
+
+By default inode uses SQLite + sqlite-vec — single file, zero infrastructure.
+
+If you're on Windows (where the sqlite-vec CGO build chain is painful) or you'd rather run on a real database, you can switch to Postgres + pgvector. The Postgres driver is pure Go, so `go install` works without any C toolchain.
+
+```bash
+# 1. Start a pgvector-enabled Postgres (compose file in repo root)
+docker compose up -d
+
+# 2. Point inode at it
+inode config set db.backend postgres
+inode config set db.dsn "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
+```
+
+inode will `CREATE EXTENSION vector` and create the `notes` table on first run. SQLite remains the default — Postgres is opt-in.
+
 ---
 
 ## Commands

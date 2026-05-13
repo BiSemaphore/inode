@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -29,18 +30,29 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		return nil, fmt.Errorf("init key manager: %w", err)
 	}
 
-	// DB adapter.
-	dbPath := cfg.DB.Path
-	if dbPath == "" {
-		dbPath = configDir + "/notes.db"
-	}
-	if len(dbPath) >= 2 && dbPath[:2] == "~/" {
-		home, _ := os.UserHomeDir()
-		dbPath = home + dbPath[1:]
-	}
-	dbAdapter, err := db.NewSQLiteAdapter(dbPath, cfg.Embedding.Dimension)
-	if err != nil {
-		return nil, fmt.Errorf("init db: %w", err)
+	// DB adapter — selected by backend config.
+	var dbAdapter db.Adapter
+	switch cfg.DB.Backend {
+	case "postgres":
+		dbAdapter, err = db.NewPostgresAdapter(context.Background(), cfg.DB.DSN, cfg.Embedding.Dimension)
+		if err != nil {
+			return nil, fmt.Errorf("init postgres: %w", err)
+		}
+	case "sqlite", "":
+		dbPath := cfg.DB.Path
+		if dbPath == "" {
+			dbPath = configDir + "/notes.db"
+		}
+		if len(dbPath) >= 2 && dbPath[:2] == "~/" {
+			home, _ := os.UserHomeDir()
+			dbPath = home + dbPath[1:]
+		}
+		dbAdapter, err = db.NewSQLiteAdapter(dbPath, cfg.Embedding.Dimension)
+		if err != nil {
+			return nil, fmt.Errorf("init sqlite: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unknown db.backend %q (supported: sqlite, postgres)", cfg.DB.Backend)
 	}
 
 	// LLM adapter — selected by backend config.

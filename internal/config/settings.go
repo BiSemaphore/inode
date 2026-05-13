@@ -42,7 +42,13 @@ type EmbeddingConfig struct {
 }
 
 type DBConfig struct {
+	// Backend selects the storage engine: "sqlite" (default) or "postgres".
+	Backend string `mapstructure:"backend"`
+	// Path is the SQLite database file. Used only when Backend = sqlite.
 	Path string `mapstructure:"path"`
+	// DSN is the Postgres connection string (e.g. postgres://user:pass@host:5432/db?sslmode=disable).
+	// Used only when Backend = postgres.
+	DSN string `mapstructure:"dsn"`
 }
 
 type DefaultsConfig struct {
@@ -76,6 +82,8 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("embedding.api_key", "INODE_EMBEDDING_API_KEY")
 	_ = v.BindEnv("embedding.base_url", "INODE_EMBEDDING_BASE_URL")
 	_ = v.BindEnv("embedding.dimension", "INODE_EMBEDDING_DIMENSION")
+	_ = v.BindEnv("db.backend", "INODE_DB_BACKEND")
+	_ = v.BindEnv("db.dsn", "INODE_DB_DSN")
 	_ = v.BindEnv("log.level", "INODE_LOG_LEVEL")
 
 	// Config file: ~/.inode/config.toml
@@ -97,7 +105,9 @@ func Load() (*Config, error) {
 	v.SetDefault("embedding.model", "nomic-embed-text")
 	v.SetDefault("embedding.base_url", "http://localhost:11434")
 	v.SetDefault("embedding.dimension", 768)
+	v.SetDefault("db.backend", "sqlite")
 	v.SetDefault("db.path", filepath.Join(configDir, "notes.db"))
+	v.SetDefault("db.dsn", "")
 	v.SetDefault("defaults.sensitive", true)
 	v.SetDefault("search.max_distance", 1.0)
 	v.SetDefault("search.top_k", 5)

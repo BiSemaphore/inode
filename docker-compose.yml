@@ -8,5 +8,22 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: inode-pgvector
+    environment:
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   ollama_data:
+  pgvector_data:

@@ -49,7 +49,14 @@ func NewPostgresAdapter(ctx context.Context, dsn string, dimension int) (*Postgr
 	if err != nil {
 		return nil, fmt.Errorf("parse dsn: %w", err)
 	}
+	// Ensure the pgvector extension exists before registering its types —
+	// pgxvec.RegisterTypes looks the `vector` type up in pg_type and fails
+	// hard if the extension hasn't been installed yet. CREATE EXTENSION IF
+	// NOT EXISTS is idempotent and cheap on subsequent connections.
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		if _, err := conn.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS vector`); err != nil {
+			return fmt.Errorf("ensure vector extension: %w", err)
+		}
 		return pgxvec.RegisterTypes(ctx, conn)
 	}
 
@@ -73,10 +80,9 @@ func NewPostgresAdapter(ctx context.Context, dsn string, dimension int) (*Postgr
 // and inserts of the new size will fail with a clear pgvector error — that
 // is the same constraint the SQLite path has, just surfaced differently.
 func (a *PostgresAdapter) migrate(ctx context.Context) error {
-	if _, err := a.pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS vector`); err != nil {
-		return fmt.Errorf("create extension vector: %w", err)
-	}
-
+	// CREATE EXTENSION is handled in AfterConnect (so type registration on
+	// every new pool connection can rely on it). All that's left here is
+	// the schema.
 	stmt := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS notes (
 			id            TEXT PRIMARY KEY,

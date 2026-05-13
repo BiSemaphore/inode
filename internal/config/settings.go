@@ -15,7 +15,18 @@ type Config struct {
 	DB        DBConfig        `mapstructure:"db"`
 	Defaults  DefaultsConfig  `mapstructure:"defaults"`
 	Search    SearchConfig    `mapstructure:"search"`
+	MCP       MCPConfig       `mapstructure:"mcp"`
 	Log       LogConfig       `mapstructure:"log"`
+}
+
+// MCPConfig tunes the `inode mcp` Model Context Protocol server.
+type MCPConfig struct {
+	// RevealSensitive, when true, lets the MCP server include plaintext
+	// content of notes marked sensitive (search_notes will surface them
+	// to the LLM, get_note will return unmasked content). Default false:
+	// sensitive notes are excluded from search candidates and masked in
+	// get_note responses.
+	RevealSensitive bool `mapstructure:"reveal_sensitive"`
 }
 
 // SearchConfig tunes the RAG retrieval pipeline.
@@ -84,6 +95,7 @@ func Load() (*Config, error) {
 	_ = v.BindEnv("embedding.dimension", "INODE_EMBEDDING_DIMENSION")
 	_ = v.BindEnv("db.backend", "INODE_DB_BACKEND")
 	_ = v.BindEnv("db.dsn", "INODE_DB_DSN")
+	_ = v.BindEnv("mcp.reveal_sensitive", "INODE_MCP_REVEAL_SENSITIVE")
 	_ = v.BindEnv("log.level", "INODE_LOG_LEVEL")
 
 	// Config file: ~/.inode/config.toml
@@ -111,6 +123,7 @@ func Load() (*Config, error) {
 	v.SetDefault("defaults.sensitive", true)
 	v.SetDefault("search.max_distance", 1.0)
 	v.SetDefault("search.top_k", 5)
+	v.SetDefault("mcp.reveal_sensitive", false)
 	v.SetDefault("log.level", "info")
 
 	var cfg Config

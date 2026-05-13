@@ -80,9 +80,8 @@ By default inode uses SQLite + sqlite-vec — single file, zero infrastructure.
 If you're on Windows (where the sqlite-vec CGO build chain is painful) or you'd rather run on a real database, you can switch to Postgres + pgvector. The Postgres driver is pure Go, so `go install` works without any C toolchain.
 
 ```bash
-# 1. Start a pgvector-enabled Postgres (Docker)
-docker run -d --name inode-pg -p 5432:5432 \
-    -e POSTGRES_PASSWORD=password pgvector/pgvector:pg16
+# 1. Start a pgvector-enabled Postgres (compose file in repo root)
+docker compose up -d
 
 # 2. Point inode at it
 inode config set db.backend postgres

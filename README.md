@@ -90,6 +90,34 @@ inode config set db.dsn "postgres://postgres:password@localhost:5432/postgres?ss
 
 inode will `CREATE EXTENSION vector` and create the `notes` table on first run. SQLite remains the default — Postgres is opt-in.
 
+### Optional: MCP server (Claude Code / Cursor)
+
+`inode mcp` runs as a Model Context Protocol server over stdio so an MCP-aware AI client can read your knowledge base.
+
+Exposes three read-only tools to the calling agent:
+
+- `search_notes` — vector search; returns the most relevant notes
+- `list_notes` — paginated listing; metadata only
+- `get_note` — fetch a single note by ID prefix
+
+Sensitive notes are excluded from search results and masked in `get_note` responses by default. To let the agent see them:
+
+```bash
+inode config set mcp.reveal_sensitive true
+```
+
+Wire it into your MCP client config (Claude Code example):
+
+```json
+{
+  "mcpServers": {
+    "inode": { "command": "inode", "args": ["mcp"] }
+  }
+}
+```
+
+Writing notes from an agent isn't exposed yet — read-only is the safer first step.
+
 ---
 
 ## Commands

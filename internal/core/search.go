@@ -73,6 +73,12 @@ type SearchOptions struct {
 	Category string
 	Tags     []string
 
+	// IsSensitive optionally restricts results by the sensitive flag.
+	// nil = no filter (default); pointer to false = exclude sensitive
+	// notes from results before they reach the LLM. Used by the MCP
+	// server to prevent sensitive notes leaking to the calling agent.
+	IsSensitive *bool
+
 	// MaxDistance is the L2-distance ceiling for keeping a candidate note.
 	//
 	//   = 0  →  use the service default (typically 1.0)
@@ -91,9 +97,13 @@ type SearchOptions struct {
 	OnStep func(step string)
 }
 
-// Search embeds the query, retrieves top-K notes, decrypts them,
-// and returns an LLM-generated answer alongside the source notes.
-func (s *SearchService) Search(ctx context.Context, query string, opts SearchOptions) (*SearchResult, error) {
+// Retrieve runs the embed → vector search → threshold filter → decrypt
+// pipeline and returns the candidate notes. No LLM call.
+//
+// Used by the MCP tool surface: the calling agent (Claude Code, Cursor)
+// is itself an LLM and prefers to reason over raw candidates rather than
+// a pre-generated answer from inode's local model.
+func (s *SearchService) Retrieve(ctx context.Context, query string, opts SearchOptions) ([]*model.Note, error) {
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
 	}
@@ -108,47 +118,59 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		step = func(string) {}
 	}
 
-	// Step 1: embed the query.
 	step("embedding query")
 	vec, err := s.embedding.Embed(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
 
-	// Step 2: vector similarity search.
 	step("searching")
 	filters := db.Filters{
-		Category: opts.Category,
-		Tags:     opts.Tags,
+		Category:    opts.Category,
+		Tags:        opts.Tags,
+		IsSensitive: opts.IsSensitive,
 	}
 	notes, err := s.db.SearchSimilar(ctx, vec, topK, filters)
 	if err != nil {
 		return nil, fmt.Errorf("vector search: %w", err)
 	}
 
-	// Step 2b: drop notes beyond the relevance threshold so weak matches
-	// never reach the LLM (which would otherwise answer "no match" while
-	// the CLI still printed them as Sources).
 	notes = filterByDistance(notes, s.thresholdFor(opts))
-
 	if len(notes) == 0 {
-		return &SearchResult{Answer: "No relevant notes found.", Notes: nil}, nil
+		return nil, nil
 	}
 
-	// Step 3: decrypt sensitive notes in memory.
 	decrypted, err := s.decryptNotes(notes)
 	if err != nil {
 		return nil, fmt.Errorf("decrypt notes: %w", err)
 	}
+	return decrypted, nil
+}
 
-	// Step 4: LLM generates an answer and tells us which notes it actually used.
+// Search embeds the query, retrieves top-K notes, decrypts them,
+// and returns an LLM-generated answer alongside the source notes.
+func (s *SearchService) Search(ctx context.Context, query string, opts SearchOptions) (*SearchResult, error) {
+	decrypted, err := s.Retrieve(ctx, query, opts)
+	if err != nil {
+		return nil, err
+	}
+	if len(decrypted) == 0 {
+		return &SearchResult{Answer: "No relevant notes found.", Notes: nil}, nil
+	}
+
+	step := opts.OnStep
+	if step == nil {
+		step = func(string) {}
+	}
+
+	// LLM generates an answer and tells us which notes it actually used.
 	step("thinking")
 	answer, err := s.llm.Answer(ctx, query, decrypted)
 	if err != nil {
 		return nil, fmt.Errorf("llm answer: %w", err)
 	}
 
-	// Step 5: filter the source list down to notes the LLM said it relied on.
+	// Filter the source list down to notes the LLM said it relied on.
 	// When the LLM rejected every candidate (Matched=false), we hide the
 	// "Sources" list entirely — the answer alone is shown.
 	sources := filterByMatchedIDs(decrypted, answer.UsedNoteIDs)

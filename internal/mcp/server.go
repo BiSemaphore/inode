@@ -48,6 +48,10 @@ func NewServer(version string, h *Handler) *server.MCPServer {
 				mcp.Description("Max number of source notes to consider (default 5)")),
 			mcp.WithString("category",
 				mcp.Description("Filter to one category: credentials, commands, snippets, decisions, runbooks, learnings, references, contacts, notes")),
+			mcp.WithReadOnlyHintAnnotation(true),
+			mcp.WithDestructiveHintAnnotation(false),
+			mcp.WithIdempotentHintAnnotation(true),
+			mcp.WithOpenWorldHintAnnotation(false),
 		),
 		h.handleSearchNotes,
 	)
@@ -66,6 +70,10 @@ func NewServer(version string, h *Handler) *server.MCPServer {
 				mcp.Description("Filter by a single tag")),
 			mcp.WithNumber("limit",
 				mcp.Description("Max notes to return (default 20)")),
+			mcp.WithReadOnlyHintAnnotation(true),
+			mcp.WithDestructiveHintAnnotation(false),
+			mcp.WithIdempotentHintAnnotation(true),
+			mcp.WithOpenWorldHintAnnotation(false),
 		),
 		h.handleListNotes,
 	)
@@ -80,6 +88,10 @@ func NewServer(version string, h *Handler) *server.MCPServer {
 			),
 			mcp.WithString("id", mcp.Required(),
 				mcp.Description("Note ID (full UUID or short prefix)")),
+			mcp.WithReadOnlyHintAnnotation(true),
+			mcp.WithDestructiveHintAnnotation(false),
+			mcp.WithIdempotentHintAnnotation(true),
+			mcp.WithOpenWorldHintAnnotation(false),
 		),
 		h.handleGetNote,
 	)

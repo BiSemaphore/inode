@@ -149,6 +149,31 @@ func TestFormatNote_SensitiveMaskedWhenNoReveal(t *testing.T) {
 	}
 }
 
+func TestNewServer_ToolsAdvertiseReadOnly(t *testing.T) {
+	// These tools never mutate the KB. MCP clients use the annotation hints to
+	// decide whether to auto-approve a call, so read-only must be advertised
+	// honestly — the library defaults (destructive=true, readOnly=false) would
+	// make clients warn users about safe, read-only lookups.
+	s := NewServer("test", &Handler{})
+	tools := s.ListTools()
+	for _, name := range []string{"search_notes", "list_notes", "get_note"} {
+		st, ok := tools[name]
+		if !ok {
+			t.Fatalf("tool %q not registered", name)
+		}
+		a := st.Tool.Annotations
+		if a.ReadOnlyHint == nil || !*a.ReadOnlyHint {
+			t.Errorf("%s: ReadOnlyHint should be true, got %v", name, a.ReadOnlyHint)
+		}
+		if a.DestructiveHint == nil || *a.DestructiveHint {
+			t.Errorf("%s: DestructiveHint should be false, got %v", name, a.DestructiveHint)
+		}
+		if a.IdempotentHint == nil || !*a.IdempotentHint {
+			t.Errorf("%s: IdempotentHint should be true, got %v", name, a.IdempotentHint)
+		}
+	}
+}
+
 func TestShortID(t *testing.T) {
 	if got := shortID("abcd1234ef56"); got != "abcd1234" {
 		t.Errorf("expected 8-char prefix, got %q", got)

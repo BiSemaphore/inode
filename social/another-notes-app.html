@@ -1,0 +1,1341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>inode — another notes app · binary.semaphore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Caveat:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+
+    /* ── Tokens ───────────────────────────────────────────────── */
+    :root {
+      --paper:      #faf6ec;
+      --paper-2:    #f3ecdc;
+      --paper-edge: #e8dfca;
+      --ink:        #1a1f2e;
+      --ink-soft:   #2d3548;
+      --pencil:     #8b8680;
+      --pencil-l:   #c4bfb6;
+      --red:        #b8472d;
+      --red-soft:   #d97a64;
+      --green:      #3d6b4a;
+      --blue:       #2d4f6b;
+      --yellow:     #e6c449;
+      --highlight:  #fff39c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #d9d2bf;
+      font-family: 'Kalam', cursive;
+      padding: 56px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 72px;
+      min-height: 100vh;
+    }
+
+    h1.page-title {
+      color: #6a6457;
+      font-family: 'Caveat', cursive;
+      font-size: 32px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      width: 100%;
+      text-align: center;
+      padding-bottom: 14px;
+      border-bottom: 1px dashed rgba(0,0,0,0.15);
+    }
+    .section-label {
+      color: var(--pencil);
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+
+    /* ── Post canvas ──────────────────────────────────────────── */
+    .post-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .post {
+      width: 1080px;
+      height: 1080px;
+      background: var(--paper);
+      position: relative;
+      overflow: hidden;
+      color: var(--ink);
+      font-family: 'Kalam', cursive;
+    }
+    .post::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 18% 22%, rgba(150,120,70,0.05) 0%, transparent 45%),
+        radial-gradient(circle at 82% 78%, rgba(110,80,40,0.04) 0%, transparent 45%),
+        radial-gradient(circle, rgba(120,90,50,0.025) 0.5px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 4px 4px;
+      pointer-events: none;
+    }
+    .post::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 80px rgba(120,90,50,0.07);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* ── Logo ─────────────────────────────────────────────────── */
+    .logo { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); }
+    .logo-mark { flex-shrink: 0; }
+    .logo-text {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      line-height: 1;
+    }
+    .logo.md .logo-text { font-size: 28px; }
+
+    /* ── Type — body is Kalam ─────────────────────────────────── */
+    .body-text {
+      font-family: 'Kalam', cursive;
+      font-weight: 400;
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    .body-text.xl { font-size: 42px; line-height: 1.3; }
+    .body-text.lg { font-size: 34px; }
+    .body-text.md { font-size: 28px; }
+    .body-text.sm { font-size: 22px; }
+
+    /* Caveat reserved for accents only */
+    .accent {
+      font-family: 'Caveat', cursive;
+      font-weight: 600;
+    }
+
+    /* Inter for stack callout headings */
+    .sans-bold {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    /* Code / terminal */
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .term {
+      position: relative;
+      padding: 24px 30px 26px 30px;
+      background: var(--paper-2);
+      border: 1.5px solid var(--pencil-l);
+    }
+    .term-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      line-height: 1.65;
+      color: var(--ink);
+      display: block;
+    }
+    .term-line.lg  { font-size: 20px; }
+    .term-line .pr  { color: var(--green); margin-right: 10px; }
+    .term-line .kw  { color: var(--blue); font-weight: 600; }
+    .term-line .str { color: var(--red); }
+    .term-line .ok  { color: var(--green); }
+    .term-line .dim { color: var(--pencil); }
+
+    .pencil      { color: var(--pencil); }
+    .pencil-l    { color: var(--pencil-l); }
+    .ink-soft    { color: var(--ink-soft); }
+    .red         { color: var(--red); }
+    .green       { color: var(--green); }
+    .blue        { color: var(--blue); }
+
+    /* Sketch box border (reusable) */
+    .sketch-box { position: relative; padding: 24px 28px; }
+    .sketch-box > svg.sk-border {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      pointer-events: none; overflow: visible;
+    }
+    .sketch-box > .sk-content { position: relative; z-index: 1; }
+
+    /* Hand-drawn underline */
+    .sketch-underline {
+      position: relative;
+      display: inline-block;
+    }
+    .sketch-underline::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: -10px;
+      height: 12px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'><path d='M 2,5 Q 20,3 40,5 T 80,5 Q 92,4 98,6' fill='none' stroke='%23b8472d' stroke-width='2.5' stroke-linecap='round'/></svg>");
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+    }
+
+    /* Hand-drawn ✗ — used in pain-list pages */
+    .sk-x {
+      display: inline-block;
+      width: 28px; height: 28px;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .sk-x svg { width: 100%; height: 100%; }
+
+    /* Pain row (✗ + text) */
+    .pain-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 14px 0;
+    }
+
+    /* Stack card */
+    .stack-card {
+      position: relative;
+      padding: 22px 26px;
+      background: var(--paper-2);
+    }
+    .stack-card .name {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 26px;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .stack-card .tag {
+      font-family: 'Kalam', cursive;
+      font-size: 22px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    /* Header / Footer */
+    .post-header {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 28px 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 3;
+    }
+    .header-meta {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      color: var(--pencil);
+    }
+    .post-footer {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 22px 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px dashed var(--pencil-l);
+      z-index: 3;
+    }
+    .handle {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      color: var(--pencil);
+    }
+    .htag {
+      font-family: 'Inter', sans-serif;
+      font-size: 12px; letter-spacing: 1.5px;
+      color: var(--pencil); text-transform: lowercase;
+    }
+    .page-num {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      color: var(--pencil);
+    }
+
+    /* Reading block — vertically + horizontally centered content area */
+    .reading-block {
+      position: absolute;
+      top: 100px;
+      left: 80px;
+      right: 80px;
+      bottom: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ── Terminal-window chrome ───────────────────────────────── */
+    .term-frame {
+      position: relative;
+      background: var(--paper-2);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      box-shadow: 4px 4px 0 var(--pencil-l);
+      overflow: hidden;
+    }
+    .term-titlebar {
+      background: var(--ink);
+      color: var(--paper);
+      padding: 8px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: 0.5px;
+    }
+    .term-titlebar .lights {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .term-titlebar .lights span {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .term-titlebar .lights .r { background: #ff6058; }
+    .term-titlebar .lights .y { background: #ffbd2e; }
+    .term-titlebar .lights .g { background: #28ca42; }
+    .term-titlebar .label {
+      flex: 1;
+      text-align: center;
+      color: var(--paper-edge);
+      font-size: 12px;
+    }
+    .term-frame .term-body { padding: 22px 28px; }
+
+    /* ── ASCII box-drawing decorations ───────────────────────── */
+    .ascii-rule {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--pencil);
+      font-size: 14px;
+      letter-spacing: 0;
+      white-space: pre;
+      line-height: 1;
+    }
+
+    /* ── Cursor accent ────────────────────────────────────────── */
+    .cursor {
+      display: inline-block;
+      width: 14px;
+      height: 1.05em;
+      background: var(--ink);
+      vertical-align: -2px;
+      margin-left: 4px;
+    }
+
+    /* Download buttons */
+    .dl-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--paper);
+      border: 1.5px solid var(--ink);
+      color: var(--ink);
+      font-family: 'Caveat', cursive;
+      font-size: 20px; font-weight: 500; letter-spacing: 0.5px;
+      padding: 8px 26px 6px 26px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      border-radius: 100px;
+    }
+    .dl-btn:hover { background: var(--highlight); transform: translateY(-2px); }
+    .dl-btn:active { transform: translateY(0); }
+    .dl-btn.loading { opacity: 0.5; cursor: wait; }
+
+    .action-bar {
+      display: flex; align-items: center; gap: 8px;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .dl-pdf-btn, .dl-zip-btn {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-family: 'Caveat', cursive;
+      font-size: 26px; font-weight: 600; letter-spacing: 0.5px;
+      padding: 14px 32px 12px 32px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s, color 0.15s, border-color 0.15s;
+      border-radius: 100px;
+    }
+    .dl-pdf-btn {
+      background: var(--ink); color: var(--paper);
+      border: 1.5px solid var(--ink);
+      padding-left: 32px; padding-right: 36px;
+      box-shadow: 0 4px 14px rgba(26,31,46,0.25);
+    }
+    .dl-pdf-btn:hover {
+      background: var(--red); border-color: var(--red);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(184,71,45,0.35);
+    }
+    .dl-zip-btn {
+      background: var(--paper); color: var(--ink);
+      border: 1.5px solid var(--ink);
+      box-shadow: 0 4px 14px rgba(26,31,46,0.12);
+    }
+    .dl-zip-btn:hover {
+      background: var(--green); color: var(--paper);
+      border-color: var(--green);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(61,107,74,0.35);
+    }
+    .dl-pdf-btn:active, .dl-zip-btn:active { transform: translateY(0); }
+    .dl-pdf-btn.loading, .dl-zip-btn.loading { opacity: 0.6; cursor: wait; }
+    .dl-pdf-btn svg, .dl-zip-btn svg { flex-shrink: 0; }
+
+  </style>
+</head>
+<body>
+
+<h1 class="page-title">inode · another notes app · binary.semaphore</h1>
+
+<div class="action-bar">
+  <button class="dl-pdf-btn" onclick="downloadAllAsPDF()">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1v9M4 7l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    download all 12 as PDF
+  </button>
+  <button class="dl-zip-btn" onclick="downloadAllAsZip()">
+    <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+      <path d="M2 3h5l1 2h6v8H2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M7 8v3M5 9.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    download all 12 as PNG (zip)
+  </button>
+</div>
+
+
+<!-- Reusable SVG defs -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="inode-mark" viewBox="0 0 56 56">
+      <path d="M 8,6 Q 6,6 6,8.5 L 6,28 5.5,47 Q 6,50 8.5,50 L 28,49.5 48,50 Q 50,50 50,47.5 L 50,28 50.5,8 Q 50,5.5 47.5,6 L 28,6.5 8,6 Z"
+            fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="5.5" fill="currentColor"/>
+      <path d="M 32,25 Q 38,21 43,15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <path d="M 31,32 Q 37,37 42,42" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+      <circle cx="44" cy="14" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="43" cy="43" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    </symbol>
+
+    <symbol id="sk-rect" preserveAspectRatio="none" viewBox="0 0 100 100">
+      <path d="M 2,4 Q 1.5,2 4,1.8 L 30,2 70,1.5 96,2 Q 98.5,2 98.5,4 L 99,30 98.5,70 99,96 Q 99,98 96.5,98 L 70,98.5 30,98 4,98.5 Q 1.5,98.5 1.8,96 L 2,70 1.5,30 2,4 Z"
+            fill="none" stroke="currentColor" stroke-width="0.4" stroke-linecap="round" stroke-linejoin="round"
+            vector-effect="non-scaling-stroke" style="stroke-width:2px"/>
+    </symbol>
+
+    <symbol id="sk-x-mark" viewBox="0 0 28 28">
+      <path d="M 5,5 L 23,23 M 23,5 L 5,23" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+
+<!-- ════════ POST 01 — COVER ════════════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 01 — cover</div>
+<div class="post" id="post1">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">a CLI knowledge base</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:130px; line-height:0.95; color:var(--ink); letter-spacing:-3px;">
+      another<br/>
+      notes app.
+    </div>
+
+    <div style="margin-top:48px; display:flex; align-items:center; gap:20px;">
+      <span class="accent" style="font-size:48px; color:var(--red);">no, but seriously —</span>
+      <span class="body-text md ink-soft">read the next page.</span>
+    </div>
+
+    <div class="body-text sm pencil" style="margin-top:120px; line-height:1.6;">
+      a single Go binary · runs offline · finds your stuff
+      using the same trick ChatGPT uses, except your stuff
+      stays on your laptop.
+    </div>
+
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">01 / 12</span>
+    <span class="htag">#golang · #cli · #localfirst</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post1" onclick="downloadPost('post1','inode-ana-01-cover')">↓ download post 01</button>
+</div>
+
+
+<!-- ════════ POST 02 — YOU'VE BEEN HERE ═════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 02 — the bait</div>
+<div class="post" id="post2">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">it's 11pm —</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:64px; color:var(--ink); line-height:1.05; margin-bottom:42px;">
+      you've been here.
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        ⌘K in Notion → "stripe" → 47 hits, none of them<br/>
+        the actual key.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        ⌘F in Obsidian → grep through 200 markdown files → still nothing.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        ssh prod, deep breath, regenerate the token<br/>
+        for the third time this quarter.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        "I'll just write it down" → opens 6th notes app this year.
+      </div>
+    </div>
+
+    <div style="margin-top:48px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+      <span class="accent" style="font-size:36px; color:var(--red);">if any of this stings —</span>
+      <span class="body-text md ink-soft" style="font-style:italic;">keep reading.</span>
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">02 / 12</span>
+    <span class="htag">#devlife · #kb</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post2" onclick="downloadPost('post2','inode-ana-02-bait')">↓ download post 02</button>
+</div>
+
+
+<!-- ════════ POST 03 — THE UNBAIT ═══════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 03 — the unbait</div>
+<div class="post" id="post3">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">earning the next 9 pages</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="body-text xl" style="margin-bottom:36px;">
+      I know you scroll past <span class="sketch-underline">"AI notes"</span> posts.
+    </div>
+
+    <div class="body-text xl ink-soft" style="margin-bottom:60px;">
+      I do too.
+    </div>
+
+    <div class="sketch-box" style="background:rgba(45,79,107,0.04);">
+      <svg class="sk-border" preserveAspectRatio="none" style="color:var(--blue);"><use href="#sk-rect" width="100%" height="100%"/></svg>
+      <div class="sk-content">
+        <div class="accent" style="font-size:30px; color:var(--blue); margin-bottom:14px;">so before you do —</div>
+        <div class="body-text md" style="line-height:1.6;">
+          this is a <span class="accent" style="font-size:30px;">CLI</span>. it's <span class="accent" style="font-size:30px;">local</span>.
+          it doesn't talk to the cloud unless you tell it to.
+          and unlike most things with "AI" on the label,
+          this one <span class="accent" style="font-size:30px; color:var(--green);">actually finds your stuff.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="body-text sm pencil" style="margin-top:38px; transform:rotate(-0.5deg);">
+      ↳ next page: a screenshot. proof, not promises.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">03 / 12</span>
+    <span class="htag">#localfirst · #cli</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post3" onclick="downloadPost('post3','inode-ana-03-unbait')">↓ download post 03</button>
+</div>
+
+
+<!-- ════════ POST 04 — TERMINAL DEMO ════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 04 — show, don't tell</div>
+<div class="post" id="post4">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">two commands.</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:64px; color:var(--ink); line-height:1.05; margin-bottom:24px;">
+      proof, not promises.
+    </div>
+
+    <div class="body-text md ink-soft" style="margin-bottom:32px;">
+      save anything in plain English. ask the same way.
+    </div>
+
+    <!-- save -->
+    <div class="term-frame" style="margin-bottom:20px;">
+      <div class="term-titlebar">
+        <span class="lights"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+        <span class="label">~/notes — inode add</span>
+      </div>
+      <div class="term-body">
+        <span class="term-line lg"><span class="pr">$</span><span class="ink">inode <span class="kw">add</span> <span class="str">"stripe test key sk_test_9xKl4mC7f, expires Aug"</span></span></span>
+        <span class="term-line"><span class="ok">✓</span> category=<span class="kw">credentials</span>&nbsp;&nbsp;tags=[<span class="green">stripe, test, payment</span>]</span>
+        <span class="term-line"><span class="ok">✓</span> sensitive · AES-256-GCM encrypted · saved as <span class="dim">#a1f4d9c2</span></span>
+      </div>
+    </div>
+
+    <div class="accent" style="font-size:26px; color:var(--pencil); margin-bottom:18px; transform:rotate(-0.5deg);">
+      ↳ a few weeks later, you forgot the exact phrasing.
+    </div>
+
+    <!-- ask -->
+    <div class="term-frame">
+      <div class="term-titlebar">
+        <span class="lights"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+        <span class="label">~/notes — inode ask</span>
+      </div>
+      <div class="term-body">
+        <span class="term-line lg"><span class="pr">$</span><span class="ink">inode <span class="kw">ask</span> <span class="str">"the stripe key for staging"</span></span></span>
+        <span class="term-line"><span class="dim">→</span> stripe test key, expires Aug</span>
+        <span class="term-line"><span class="dim">→</span> <span class="mono">sk_test_••••••••mC7f</span> <span class="dim">(use --reveal to unmask)</span></span>
+        <span class="term-line"><span class="dim">── matched 1 note · #a1f4d9c2 ──</span></span>
+      </div>
+    </div>
+
+    <div class="accent" style="font-size:26px; color:var(--green); margin-top:30px;">
+      no folders. no tags. no schema. you just typed.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">04 / 12</span>
+    <span class="htag">#demo · #cli</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post4" onclick="downloadPost('post4','inode-ana-04-demo')">↓ download post 04</button>
+</div>
+
+
+<!-- ════════ POST 05 — TRIED EVERYTHING ELSE ════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 05 — i tried everything else</div>
+<div class="post" id="post5">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">in case you're wondering —</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:18px;">
+      yes, I tried<br/>everything else.
+    </div>
+
+    <div class="ascii-rule" style="margin-bottom:22px;">─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───</div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        <span class="sans-bold" style="font-size:26px;">Notion</span> — great for meetings.
+        terrible for memory. its search treats your knowledge graph
+        as a haystack you funded.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        <span class="sans-bold" style="font-size:26px;">Obsidian</span> — wants me to learn a graph database.
+        I just want my keys.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        <span class="sans-bold" style="font-size:26px;">1Password</span> — perfect for passwords.
+        not for the bash command from last June.
+      </div>
+    </div>
+
+    <div class="pain-row">
+      <span class="sk-x" style="color:var(--red); margin-top:6px;"><svg viewBox="0 0 28 28"><use href="#sk-x-mark"/></svg></span>
+      <div class="body-text md">
+        <span class="sans-bold" style="font-size:26px;">Apple Notes</span> — where memories
+        go to be slowly forgotten.
+      </div>
+    </div>
+
+    <div class="accent" style="font-size:30px; color:var(--ink); margin-top:42px;">
+      eventually I wrote my own.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">05 / 12</span>
+    <span class="htag">#opinions</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post5" onclick="downloadPost('post5','inode-ana-05-tried')">↓ download post 05</button>
+</div>
+
+
+<!-- ════════ POST 06 — THE TRICK (EMBEDDINGS) ═══════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 06 — the only ML idea you need</div>
+<div class="post" id="post6">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">the trick, in 60 seconds</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:24px;">
+      the only ML idea<br/>you need.
+    </div>
+
+    <div class="body-text md ink-soft" style="margin-bottom:24px; line-height:1.55;">
+      Search engines look for letters. You look for meaning.
+      <span class="accent" style="font-size:30px; color:var(--ink);">Embeddings</span>
+      are how you teach a computer that "meaning" is just a list of 1024 numbers.
+    </div>
+
+    <!-- embedding scatter visualization -->
+    <div style="position:relative; margin: 22px auto 0 auto; width: 760px; height: 360px;">
+      <svg viewBox="0 0 760 360" style="width:100%; height:100%;">
+        <!-- frame -->
+        <path d="M 8,12 Q 6,8 12,8 L 380,8 750,10 Q 754,8 752,14 L 752,180 754,348 Q 754,354 748,352 L 380,352 12,354 Q 6,354 8,348 L 8,180 6,12 Z"
+              fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+        <!-- axis labels -->
+        <text x="376" y="346" text-anchor="middle" font-family="Caveat" font-size="20" fill="#8b8680">a 2-D slice of a 1024-D space</text>
+        <!-- cluster A: credentials -->
+        <circle cx="180" cy="100" r="6" fill="#b8472d"/>
+        <circle cx="200" cy="120" r="6" fill="#b8472d"/>
+        <circle cx="160" cy="135" r="6" fill="#b8472d"/>
+        <circle cx="220" cy="105" r="6" fill="#b8472d"/>
+        <circle cx="190" cy="80" r="6" fill="#b8472d"/>
+        <text x="155" y="60" font-family="Caveat" font-size="22" fill="#b8472d">credentials</text>
+        <!-- cluster B: commands -->
+        <circle cx="540" cy="120" r="6" fill="#3d6b4a"/>
+        <circle cx="560" cy="100" r="6" fill="#3d6b4a"/>
+        <circle cx="520" cy="135" r="6" fill="#3d6b4a"/>
+        <circle cx="580" cy="130" r="6" fill="#3d6b4a"/>
+        <circle cx="555" cy="155" r="6" fill="#3d6b4a"/>
+        <text x="510" y="80" font-family="Caveat" font-size="22" fill="#3d6b4a">bash commands</text>
+        <!-- cluster C: decisions -->
+        <circle cx="380" cy="240" r="6" fill="#2d4f6b"/>
+        <circle cx="360" cy="260" r="6" fill="#2d4f6b"/>
+        <circle cx="400" cy="270" r="6" fill="#2d4f6b"/>
+        <circle cx="420" cy="250" r="6" fill="#2d4f6b"/>
+        <circle cx="370" cy="220" r="6" fill="#2d4f6b"/>
+        <text x="430" y="265" font-family="Caveat" font-size="22" fill="#2d4f6b">decisions</text>
+        <!-- query -->
+        <circle cx="195" cy="115" r="10" fill="none" stroke="#1a1f2e" stroke-width="2.5"/>
+        <text x="240" y="110" font-family="Caveat" font-size="22" fill="#1a1f2e">your query "stripe key" lands here →</text>
+        <path d="M 232,108 Q 220,108 210,114" fill="none" stroke="#1a1f2e" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div style="margin-top:14px; display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+      <span class="accent" style="font-size:32px; color:var(--red);">that's the whole trick —</span>
+      <span class="body-text sm" style="color:var(--ink-soft); font-style:italic;">notes that mean similar things land near each other, even if they share no words.</span>
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">06 / 12</span>
+    <span class="htag">#ml · #embeddings</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post6" onclick="downloadPost('post6','inode-ana-06-trick')">↓ download post 06</button>
+</div>
+
+
+<!-- ════════ POST 07 — ARCHITECTURE ═════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 07 — architecture</div>
+<div class="post" id="post7">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">how it's wired</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:18px;">
+      under the hood.
+    </div>
+    <div class="body-text md ink-soft" style="margin-bottom:30px;">
+      adapter pattern. swap any layer without touching core.
+    </div>
+
+    <!-- architecture diagram -->
+    <svg viewBox="0 0 920 520" style="width:100%; height:520px;">
+
+      <!-- CLI box -->
+      <g>
+        <path d="M 30,30 Q 28,20 38,20 L 200,22 360,20 Q 370,20 368,30 L 370,90 368,110 Q 370,120 358,120 L 200,118 38,120 Q 26,120 30,108 L 30,90 28,30 Z"
+              fill="#f3ecdc" stroke="#1a1f2e" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="200" y="65" text-anchor="middle" font-family="Inter" font-weight="700" font-size="22" fill="#1a1f2e">CLI · cmd/</text>
+        <text x="200" y="92" text-anchor="middle" font-family="Kalam" font-size="18" fill="#2d3548">add · ask · list · delete</text>
+      </g>
+
+      <!-- arrow CLI → core -->
+      <path d="M 200,125 Q 200,150 200,170" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 200,170 L 194,162 M 200,170 L 206,162" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- Core box -->
+      <g>
+        <path d="M 30,180 Q 28,170 38,170 L 200,172 360,170 Q 370,170 368,180 L 370,240 368,260 Q 370,270 358,270 L 200,268 38,270 Q 26,270 30,258 L 30,240 28,180 Z"
+              fill="#f3ecdc" stroke="#1a1f2e" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="200" y="215" text-anchor="middle" font-family="Inter" font-weight="700" font-size="22" fill="#1a1f2e">Core · internal/core/</text>
+        <text x="200" y="244" text-anchor="middle" font-family="Kalam" font-size="18" fill="#2d3548">RAG pipeline · encryption · tagger</text>
+      </g>
+
+      <!-- arrows core → 3 adapters -->
+      <path d="M 100,275 Q 100,310 100,340" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 100,340 L 94,332 M 100,340 L 106,332" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+
+      <path d="M 200,275 Q 200,310 200,340" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 200,340 L 194,332 M 200,340 L 206,332" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+
+      <path d="M 300,275 Q 300,310 300,340" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 300,340 L 294,332 M 300,340 L 306,332" fill="none" stroke="#8b8680" stroke-width="2" stroke-linecap="round"/>
+
+      <!-- 3 adapter boxes -->
+      <g>
+        <path d="M 20,350 Q 18,342 26,342 L 100,344 175,342 Q 183,342 182,350 L 184,420 182,440 Q 184,450 176,448 L 100,446 26,448 Q 16,450 18,440 L 18,420 16,350 Z"
+              fill="#faf6ec" stroke="#b8472d" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="100" y="383" text-anchor="middle" font-family="Inter" font-weight="700" font-size="18" fill="#b8472d">DB Adapter</text>
+        <text x="100" y="412" text-anchor="middle" font-family="Kalam" font-size="16" fill="#2d3548">SQLite + sqlite-vec</text>
+      </g>
+
+      <g>
+        <path d="M 120,350 Q 118,342 126,342 L 200,344 275,342 Q 283,342 282,350 L 284,420 282,440 Q 284,450 276,448 L 200,446 126,448 Q 116,450 118,440 L 118,420 116,350 Z"
+              fill="#faf6ec" stroke="#3d6b4a" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="200" y="383" text-anchor="middle" font-family="Inter" font-weight="700" font-size="18" fill="#3d6b4a">Embedding</text>
+        <text x="200" y="412" text-anchor="middle" font-family="Kalam" font-size="16" fill="#2d3548">Ollama · Voyage</text>
+      </g>
+
+      <g>
+        <path d="M 220,350 Q 218,342 226,342 L 300,344 375,342 Q 383,342 382,350 L 384,420 382,440 Q 384,450 376,448 L 300,446 226,448 Q 216,450 218,440 L 218,420 216,350 Z"
+              fill="#faf6ec" stroke="#2d4f6b" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="300" y="383" text-anchor="middle" font-family="Inter" font-weight="700" font-size="18" fill="#2d4f6b">LLM</text>
+        <text x="300" y="412" text-anchor="middle" font-family="Kalam" font-size="16" fill="#2d3548">Ollama · Claude</text>
+      </g>
+
+      <!-- Storage label -->
+      <text x="200" y="490" text-anchor="middle" font-family="Caveat" font-weight="500" font-size="22" fill="#8b8680">all on your machine, by default</text>
+
+      <!-- side annotation -->
+      <text x="540" y="200" font-family="Caveat" font-size="26" fill="#1a1f2e">interfaces, not services.</text>
+      <text x="540" y="230" font-family="Caveat" font-size="22" fill="#8b8680">swap SQLite for Postgres later</text>
+      <text x="540" y="256" font-family="Caveat" font-size="22" fill="#8b8680">without rewriting core.</text>
+
+      <path d="M 530,210 Q 470,225 410,236" fill="none" stroke="#8b8680" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M 410,236 L 420,231 M 410,236 L 419,242" fill="none" stroke="#8b8680" stroke-width="1.5" stroke-linecap="round"/>
+
+      <text x="540" y="380" font-family="Caveat" font-size="24" fill="#1a1f2e">Phase 1 ships today.</text>
+      <text x="540" y="408" font-family="Caveat" font-size="22" fill="#8b8680">Phase 2 (multi-user / Postgres)</text>
+      <text x="540" y="432" font-family="Caveat" font-size="22" fill="#8b8680">drops in via the same interface.</text>
+    </svg>
+
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">07 / 12</span>
+    <span class="htag">#architecture · #golang</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post7" onclick="downloadPost('post7','inode-ana-07-arch')">↓ download post 07</button>
+</div>
+
+
+<!-- ════════ POST 08 — THE STACK ════════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 08 — the stack</div>
+<div class="post" id="post8">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">opinionated choices</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:32px;">
+      the stack.
+    </div>
+
+    <!-- stack grid 2 columns -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px;">
+
+      <div class="stack-card">
+        <div class="name">Go</div>
+        <div class="tag">single binary · cross-compile · no runtime to install</div>
+      </div>
+
+      <div class="stack-card">
+        <div class="name">SQLite + sqlite-vec</div>
+        <div class="tag">vector index in a regular file. scp it if you want.</div>
+      </div>
+
+      <div class="stack-card">
+        <div class="name">Ollama</div>
+        <div class="tag">LLM and embeddings, both local. free. offline.</div>
+      </div>
+
+      <div class="stack-card">
+        <div class="name">AES-256-GCM</div>
+        <div class="tag">for the secrets. Argon2id derives the key.</div>
+      </div>
+
+      <div class="stack-card">
+        <div class="name">OS Keychain</div>
+        <div class="tag">for the key that decrypts the keys. mac · linux · win.</div>
+      </div>
+
+      <div class="stack-card" style="background:rgba(230,196,73,0.18);">
+        <div class="name" style="color:var(--red);">no Postgres.</div>
+        <div class="tag">no docker. no account. no API key needed to start.</div>
+      </div>
+
+    </div>
+
+    <div class="accent" style="font-size:30px; color:var(--pencil); margin-top:28px; transform:rotate(-0.5deg);">
+      total cost: $0. total dependencies you can't see: 0.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">08 / 12</span>
+    <span class="htag">#stack · #zero-cost</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post8" onclick="downloadPost('post8','inode-ana-08-stack')">↓ download post 08</button>
+</div>
+
+
+<!-- ════════ POST 09 — WHAT IT ISN'T ════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 09 — what it isn't</div>
+<div class="post" id="post9">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">honest scope</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:32px;">
+      what it isn't.
+    </div>
+
+    <div class="body-text md" style="line-height:1.65;">
+      <span class="accent" style="font-size:30px; color:var(--red);">→</span>
+      <span class="ink">not a Notion replacement.</span>
+      <span class="ink-soft"> Notion is a Notion replacement.</span>
+    </div>
+
+    <div class="body-text md" style="line-height:1.65; margin-top:16px;">
+      <span class="accent" style="font-size:30px; color:var(--red);">→</span>
+      <span class="ink">no team mode.</span>
+      <span class="ink-soft"> one machine, one user. teams are someone else's problem.</span>
+    </div>
+
+    <div class="body-text md" style="line-height:1.65; margin-top:16px;">
+      <span class="accent" style="font-size:30px; color:var(--red);">→</span>
+      <span class="ink">no auto-import from your apps.</span>
+      <span class="ink-soft"> dumb in, dumb out. you put things in, you get things out.</span>
+    </div>
+
+    <div class="body-text md" style="line-height:1.65; margin-top:16px;">
+      <span class="accent" style="font-size:30px; color:var(--red);">→</span>
+      <span class="ink">no waitlist. no marketing site.</span>
+      <span class="ink-soft"> no growth team.</span>
+    </div>
+
+    <div class="body-text md" style="line-height:1.65; margin-top:16px;">
+      <span class="accent" style="font-size:30px; color:var(--red);">→</span>
+      <span class="ink">no telemetry.</span>
+      <span class="ink-soft"> I genuinely don't know if anyone is using this.</span>
+    </div>
+
+    <div class="accent" style="font-size:32px; color:var(--ink); margin-top:46px;">
+      ↳ the trades are the point.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">09 / 12</span>
+    <span class="htag">#scope · #honest</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post9" onclick="downloadPost('post9','inode-ana-09-isnt')">↓ download post 09</button>
+</div>
+
+
+<!-- ════════ POST 10 — INSTALL ══════════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 10 — install</div>
+<div class="post" id="post10">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">if you want to try.</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:60px; color:var(--ink); line-height:1.05; margin-bottom:18px;">
+      five minutes.
+    </div>
+    <div class="body-text md ink-soft" style="margin-bottom:30px;">
+      copy-paste, in order.
+    </div>
+
+    <div class="term-frame" style="margin-bottom:20px;">
+      <div class="term-titlebar">
+        <span class="lights"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+        <span class="label">step 1 — local LLM + embeddings</span>
+      </div>
+      <div class="term-body">
+        <span class="term-line"><span class="pr">$</span>brew install ollama</span>
+        <span class="term-line"><span class="pr">$</span>ollama pull llama3.2</span>
+        <span class="term-line"><span class="pr">$</span>ollama pull nomic-embed-text</span>
+      </div>
+    </div>
+
+    <div class="term-frame" style="margin-bottom:20px;">
+      <div class="term-titlebar">
+        <span class="lights"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+        <span class="label">step 2 — the binary</span>
+      </div>
+      <div class="term-body">
+        <span class="term-line"><span class="pr">$</span>go install github.com/shahid-io/inode<span class="kw">@latest</span></span>
+      </div>
+    </div>
+
+    <div class="term-frame">
+      <div class="term-titlebar">
+        <span class="lights"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+        <span class="label">step 3 — try it</span>
+      </div>
+      <div class="term-body">
+        <span class="term-line"><span class="pr">$</span>inode <span class="kw">add</span> <span class="str">"your first note"</span></span>
+        <span class="term-line"><span class="pr">$</span>inode <span class="kw">ask</span> <span class="str">"what was that thing"</span><span class="cursor"></span></span>
+      </div>
+    </div>
+
+    <div class="accent" style="font-size:28px; color:var(--green); margin-top:28px;">
+      no API key. no account. no migration script.
+    </div>
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">10 / 12</span>
+    <span class="htag">#install · #devtools</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post10" onclick="downloadPost('post10','inode-ana-10-install')">↓ download post 10</button>
+</div>
+
+
+<!-- ════════ POST 11 — THE HONEST PART ══════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 11 — the honest part</div>
+<div class="post" id="post11">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">the only earnest page.</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:54px; color:var(--ink); line-height:1.1; margin-bottom:18px;">
+      the honest part.
+    </div>
+
+    <div class="ascii-rule" style="margin-bottom:32px;">┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄ ┄</div>
+
+    <div class="body-text lg" style="line-height:1.55;">
+      I built this for myself.<br/><br/>
+
+      I'm sharing it because someone else might recognize the shape
+      and want the same thing — not because it's a startup,
+      not because there's a waitlist, not because I have a Notion
+      template to upsell.<br/><br/>
+
+      The only thing I want is for my notes to outlive
+      <span class="sketch-underline">my employer's SaaS bill.</span>
+    </div>
+
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">11 / 12</span>
+    <span class="htag">#origin</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post11" onclick="downloadPost('post11','inode-ana-11-honest')">↓ download post 11</button>
+</div>
+
+
+<!-- ════════ POST 12 — END CARD ═════════════════════════════ -->
+<div class="post-wrap">
+<div class="section-label">post 12 — end card</div>
+<div class="post" id="post12">
+
+  <div class="post-header">
+    <div class="logo md">
+      <svg class="logo-mark" width="40" height="40"><use href="#inode-mark"/></svg>
+      <span class="logo-text">inode</span>
+    </div>
+    <span class="header-meta">that's all.</span>
+  </div>
+
+  <div class="reading-block">
+
+    <div class="sans-bold" style="font-size:48px; color:var(--ink); line-height:1.15; margin-bottom:40px; letter-spacing:-1px;">
+      github.com/<wbr/>shahid-io/inode
+    </div>
+
+    <div class="body-text md" style="line-height:1.7; color:var(--ink-soft);">
+      <span class="accent" style="font-size:30px; color:var(--green);">MIT</span>
+      &nbsp;·&nbsp;
+      <span class="accent" style="font-size:30px; color:var(--green);">no telemetry</span>
+      &nbsp;·&nbsp;
+      <span class="accent" style="font-size:30px; color:var(--green);">you owe me nothing</span>
+    </div>
+
+    <div style="margin-top:54px;">
+      <div class="ascii-rule">─────────────────────────────────────────</div>
+      <div class="body-text sm" style="margin-top:18px; color:var(--ink-soft); line-height:1.6;">
+        <span class="accent" style="font-size:26px; color:var(--ink);">if it helps</span>
+        <span class="pencil"> — open an issue, send a PR, or just</span><br/>
+        <span class="pencil">read the source. it's not very long.</span>
+      </div>
+    </div>
+
+    <div class="accent" style="font-size:30px; color:var(--red); margin-top:46px; transform:rotate(-1deg);">
+      please don't ask me to add a kanban board.
+    </div>
+
+  </div>
+
+  <div class="post-footer">
+    <span class="handle">@binary.semaphore</span>
+    <span class="page-num">12 / 12</span>
+    <span class="htag">#opensource · #inode</span>
+  </div>
+</div>
+<button class="dl-btn" data-target="post12" onclick="downloadPost('post12','inode-ana-12-endcard')">↓ download post 12</button>
+</div>
+
+
+<script>
+  async function downloadAllAsPDF() {
+    const btn = document.querySelector('.dl-pdf-btn');
+    const original = btn.innerHTML;
+    btn.classList.add('loading');
+
+    const postIds = ['post1','post2','post3','post4','post5','post6','post7','post8','post9','post10','post11','post12'];
+
+    try {
+      await document.fonts.ready;
+      await new Promise(r => setTimeout(r, 200));
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'pt', format: [1080, 1080], orientation: 'portrait', compress: true });
+
+      for (let i = 0; i < postIds.length; i++) {
+        btn.innerHTML = `⏳ rendering ${i + 1} / ${postIds.length}...`;
+        const el = document.getElementById(postIds[i]);
+        const canvas = await html2canvas(el, {
+          scale: 2, useCORS: true, backgroundColor: '#faf6ec',
+          width: 1080, height: 1080, windowWidth: 1080, windowHeight: 1080,
+          scrollX: 0, scrollY: 0, logging: false, imageTimeout: 0,
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        if (i > 0) pdf.addPage([1080, 1080], 'portrait');
+        pdf.addImage(imgData, 'JPEG', 0, 0, 1080, 1080, undefined, 'FAST');
+      }
+      pdf.save('inode-another-notes-app.pdf');
+    } catch (e) {
+      alert('PDF export failed: ' + e.message);
+      console.error(e);
+    } finally {
+      btn.classList.remove('loading');
+      btn.innerHTML = original;
+    }
+  }
+
+  async function downloadAllAsZip() {
+    const btn = document.querySelector('.dl-zip-btn');
+    const original = btn.innerHTML;
+    btn.classList.add('loading');
+
+    const posts = [
+      ['post1',  'inode-ana-01-cover'],
+      ['post2',  'inode-ana-02-bait'],
+      ['post3',  'inode-ana-03-unbait'],
+      ['post4',  'inode-ana-04-demo'],
+      ['post5',  'inode-ana-05-tried'],
+      ['post6',  'inode-ana-06-trick'],
+      ['post7',  'inode-ana-07-arch'],
+      ['post8',  'inode-ana-08-stack'],
+      ['post9',  'inode-ana-09-isnt'],
+      ['post10', 'inode-ana-10-install'],
+      ['post11', 'inode-ana-11-honest'],
+      ['post12', 'inode-ana-12-endcard'],
+    ];
+
+    try {
+      await document.fonts.ready;
+      await new Promise(r => setTimeout(r, 200));
+
+      const zip = new JSZip();
+
+      for (let i = 0; i < posts.length; i++) {
+        const [id, filename] = posts[i];
+        btn.innerHTML = `⏳ rendering ${i + 1} / ${posts.length}...`;
+        const el = document.getElementById(id);
+        const canvas = await html2canvas(el, {
+          scale: 2, useCORS: true, backgroundColor: '#faf6ec',
+          width: 1080, height: 1080, windowWidth: 1080, windowHeight: 1080,
+          scrollX: 0, scrollY: 0, logging: false, imageTimeout: 0,
+        });
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+        zip.file(`${filename}.png`, blob);
+      }
+
+      btn.innerHTML = '⏳ packing zip...';
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'inode-another-notes-app.zip';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert('ZIP export failed: ' + e.message);
+      console.error(e);
+    } finally {
+      btn.classList.remove('loading');
+      btn.innerHTML = original;
+    }
+  }
+
+  async function downloadPost(id, filename) {
+    const btn = document.querySelector(`button[data-target="${id}"]`);
+    const original = btn.innerHTML;
+    btn.classList.add('loading');
+    btn.innerHTML = '⏳ rendering...';
+
+    try {
+      await document.fonts.ready;
+      await new Promise(r => setTimeout(r, 100));
+      const el = document.getElementById(id);
+      const canvas = await html2canvas(el, {
+        scale: 2, useCORS: true, backgroundColor: '#faf6ec',
+        width: 1080, height: 1080, windowWidth: 1080, windowHeight: 1080,
+        scrollX: 0, scrollY: 0, logging: false, imageTimeout: 0,
+      });
+      const link = document.createElement('a');
+      link.download = `${filename}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) {
+      alert('Render failed: ' + e.message);
+    } finally {
+      btn.classList.remove('loading');
+      btn.innerHTML = original;
+    }
+  }
+</script>
+
+</body>
+</html>

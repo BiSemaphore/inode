@@ -38,9 +38,11 @@ Run vault write database/rotate-root/staging, then restart the api.
 go install github.com/BiSemaphore/inode@latest
 ```
 
+Needs Go 1.26 or newer and, for the default SQLite backend, CGO with a C compiler. Versions before v0.5.0 were published as `github.com/shahid-io/inode`.
+
 ### Releases
 
-Pre-built binaries for macOS / Linux / Windows are published on [GitHub Releases](https://github.com/BiSemaphore/inode/releases).
+[GitHub Releases](https://github.com/BiSemaphore/inode/releases) has a pre-built linux/amd64 archive for each version. On macOS, Windows and other architectures, use `go install` above; more release targets are tracked in [#33](https://github.com/BiSemaphore/inode/issues/33).
 
 ---
 
@@ -149,7 +151,6 @@ inode list --tag github
 
 # Manage
 inode note get <id>
-inode note edit <id>
 inode note delete <id>
 
 # Config

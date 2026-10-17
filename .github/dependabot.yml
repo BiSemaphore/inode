@@ -1,0 +1,28 @@
+# Dependency updates. Security updates are enabled separately in the
+# repository settings and also open PRs; those still need a CHANGELOG line
+# under "Security" by hand before merging.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["chore", "skip-changelog"]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      go-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["chore", "skip-changelog"]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        update-types: ["minor", "patch"]

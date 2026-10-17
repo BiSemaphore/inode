@@ -50,8 +50,8 @@ coverage.html
 .claude/
 docs/CLAUDE.md
 
-# Social (local-only: carousels are not published to the repo)
-social/
+# Studio: local design, social posts and motion video (never published)
+studio/
 
 # Local-only agent configs
 .agents/

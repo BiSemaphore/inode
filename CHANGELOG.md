@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The default model for `llm.backend = claude-api` is now `claude-sonnet-5-5` (was Claude Sonnet 4.5, which reaches end of life on November 30, 2026). Only applies when `llm.model` is not set. Dependencies updated: Anthropic SDK v1.81.0, pgx v5.11.0, pgvector-go v0.4.1, go-sqlite3 v1.14.52, golang.org/x/crypto v0.58.0. ([#113](https://github.com/BiSemaphore/inode/pull/113))
+
 ## [0.5.0] - 2026-10-18
 
 ### Added

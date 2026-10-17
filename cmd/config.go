@@ -22,7 +22,7 @@ var configSetCmd = &cobra.Command{
 
 Keys:
   llm.backend          claude-api | openai | ollama
-  llm.model            e.g. claude-sonnet-4-6, gpt-4o-mini
+  llm.model            e.g. claude-sonnet-5-5, gpt-4o-mini
   llm.api_key          Anthropic or OpenAI API key
   embedding.backend    voyage | local
   embedding.api_key    Voyage AI API key

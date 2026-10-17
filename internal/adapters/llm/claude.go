@@ -20,7 +20,7 @@ type ClaudeAdapter struct {
 // NewClaudeAdapter creates a Claude API adapter.
 func NewClaudeAdapter(apiKey, modelName string) *ClaudeAdapter {
 	if modelName == "" {
-		modelName = string(anthropic.ModelClaudeSonnet4_5)
+		modelName = string(anthropic.ModelClaudeSonnet5_5)
 	}
 	return &ClaudeAdapter{
 		client: anthropic.NewClient(option.WithAPIKey(apiKey)),

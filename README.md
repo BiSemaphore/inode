@@ -155,7 +155,7 @@ inode note delete <id>
 
 # Config
 inode config set llm.backend claude-api
-inode config set llm.model claude-sonnet-4-6
+inode config set llm.model claude-sonnet-5-5
 inode config show
 ```
 

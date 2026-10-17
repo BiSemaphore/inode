@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- OpenAI LLM backend, opt-in via `llm.backend = openai`. Plain `net/http` against the Chat Completions API (no SDK dependency), JSON mode for classification and answers. Defaults to `gpt-4o-mini`; `llm.base_url` targets Azure OpenAI or any compatible endpoint. Ollama stays the default.
+
 ### Changed
 - The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.3.0 remain installable under the old `github.com/shahid-io/inode` path.
 

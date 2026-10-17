@@ -71,6 +71,14 @@ inode config set embedding.backend voyage
 inode config set embedding.api_key pa-xxxx
 ```
 
+Or OpenAI for the LLM (`llm.base_url` also points it at Azure OpenAI or any compatible gateway):
+
+```bash
+inode config set llm.backend openai
+inode config set llm.api_key sk-xxxx
+inode config set llm.model gpt-4o-mini   # optional, this is the default
+```
+
 These are completely optional. The Ollama path is fully featured.
 
 ### Optional: Postgres + pgvector backend

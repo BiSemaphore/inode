@@ -21,9 +21,9 @@ var configSetCmd = &cobra.Command{
 	Long: `Set a configuration key-value pair in ~/.inode/config.toml.
 
 Keys:
-  llm.backend          claude-api | ollama
-  llm.model            e.g. claude-sonnet-4-6
-  llm.api_key          Anthropic API key
+  llm.backend          claude-api | openai | ollama
+  llm.model            e.g. claude-sonnet-4-6, gpt-4o-mini
+  llm.api_key          Anthropic or OpenAI API key
   embedding.backend    voyage | local
   embedding.api_key    Voyage AI API key
   defaults.sensitive   true | false`,

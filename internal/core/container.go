@@ -63,10 +63,15 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 			return nil, fmt.Errorf("llm.api_key required for claude-api backend — run: inode config set llm.api_key <key>")
 		}
 		llmAdapter = llm.NewClaudeAdapter(cfg.LLM.APIKey, cfg.LLM.Model)
+	case "openai":
+		if cfg.LLM.APIKey == "" {
+			return nil, fmt.Errorf("llm.api_key required for openai backend; run: inode config set llm.api_key <key>")
+		}
+		llmAdapter = llm.NewOpenAIAdapter(cfg.LLM.APIKey, cfg.LLM.Model, cfg.LLM.BaseURL)
 	case "ollama", "":
 		llmAdapter = llm.NewOllamaAdapter(cfg.LLM.BaseURL, cfg.LLM.Model)
 	default:
-		return nil, fmt.Errorf("unknown llm.backend %q (supported: ollama, claude-api)", cfg.LLM.Backend)
+		return nil, fmt.Errorf("unknown llm.backend %q (supported: ollama, claude-api, openai)", cfg.LLM.Backend)
 	}
 
 	// Embedding adapter — selected by backend config.

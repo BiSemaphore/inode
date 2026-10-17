@@ -1,419 +1,282 @@
-# inode — Technical Architecture
+# inode architecture
 
----
+How inode is built, as of v0.5.0. Every section names the files it describes;
+if the code and this document disagree, the code wins and this document has a
+bug. Plans for teams and organizations are not here; see [What's next](#whats-next).
 
-## 1. System Layers
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                          CLI Layer                                │
-│   inode add / inode ask / inode list / inode note / inode config  │
-│   Go + Cobra + Lipgloss                                           │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │ direct calls (Phase 1)
-                           │ HTTP/REST (Phase 2+)
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                       Core Services Layer                         │
-│                                                                  │
-│  ┌──────────────┐   ┌───────────────┐   ┌─────────────────────┐ │
-│  │  NoteService │   │ SearchService │   │    TaggerService    │ │
-│  │  add/get/del │   │ RAG pipeline  │   │  auto-tag via LLM   │ │
-│  └──────┬───────┘   └───────┬───────┘   └──────────┬──────────┘ │
-│         │                   │                       │            │
-│  ┌──────▼───────┐   ┌───────▼───────┐   ┌──────────▼──────────┐ │
-│  │  Encryption  │   │   Embedding   │   │    LLM Adapter      │ │
-│  │  AES-256-GCM │   │   Adapter     │   │  Claude / Ollama    │ │
-│  └──────────────┘   └───────────────┘   └─────────────────────┘ │
-└──────────────────────────┬───────────────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                        Storage Layer                              │
-│                                                                  │
-│  Phase 1: SQLite + sqlite-vec     ~/.inode/notes.db              │
-│  Phase 2: PostgreSQL + pgvector   (same DBAdapter interface)     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 2. Folder Structure
-
-Follows standard Go project layout: `cmd/` for CLI entry points,
-`internal/` for all private packages (not importable by external code).
+## 1. Layers
 
 ```
-inode/
-├── main.go                        # entry point — calls cmd.Execute()
-├── go.mod
-├── go.sum
-│
-├── cmd/                           # Cobra commands (CLI layer)
-│   ├── root.go                    # root command, global flags, config init
-│   ├── add.go                     # inode add
-│   ├── ask.go                     # inode ask
-│   ├── list.go                    # inode list
-│   ├── note.go                    # inode note get/edit/delete
-│   └── config.go                  # inode config set/show
-│
-├── internal/
-│   ├── core/
-│   │   ├── notes.go               # NoteService — orchestrates add/get/delete
-│   │   ├── search.go              # SearchService — RAG pipeline
-│   │   ├── tagger.go              # TaggerService — LLM classification
-│   │   └── encryption.go          # AES-256-GCM + Argon2id key derivation
-│   │
-│   ├── adapters/
-│   │   ├── llm/
-│   │   │   ├── adapter.go         # LLMAdapter interface
-│   │   │   ├── claude.go          # Claude API implementation
-│   │   │   └── ollama.go          # Ollama implementation (Phase 3)
-│   │   ├── embedding/
-│   │   │   ├── adapter.go         # EmbeddingAdapter interface
-│   │   │   └── voyage.go          # Voyage AI HTTP client
-│   │   └── db/
-│   │       ├── adapter.go         # DBAdapter interface
-│   │       ├── sqlite.go          # Phase 1: SQLite + sqlite-vec
-│   │       └── postgres.go        # Phase 2: PostgreSQL + pgvector
-│   │
-│   ├── config/
-│   │   └── settings.go            # Read/write ~/.inode/config.toml
-│   │
-│   └── model/
-│       └── note.go                # Note struct, shared types
-│
-└── server/                        # Phase 2 only — Go + chi HTTP server
-    ├── main.go
-    ├── routes/
-    │   ├── notes.go
-    │   ├── search.go
-    │   └── auth.go
-    └── middleware/
-        └── auth.go                # JWT verification
+  cmd/                 Cobra commands: parse flags, print results, ask for confirmation
+   |
+   v
+  internal/core/       Container (wiring), NoteService, SearchService, TaggerService,
+   |                   KeyManager (encryption), summary checks
+   v
+  internal/adapters/   db         sqlite.go (sqlite-vec), postgres.go (pgvector)
+                       llm        ollama.go, claude.go, openai.go
+                       embedding  ollama.go, voyage.go
+
+  internal/mcp/        MCP server over stdio; uses core, read-only
+  internal/config/     Config loading (viper): file, environment, defaults
+  internal/model/      Note, Category
+  internal/cli/        Terminal spinner
+  internal/version/    Version string (set by ldflags at release)
 ```
 
----
+`cmd` and `internal/mcp` are the two front ends. Both reach storage and the
+models only through the services on `core.Container` (`Notes`, `Search`);
+neither calls an adapter directly.
 
-## 3. Adapter Interfaces
+## 2. Packages
 
-The three abstraction boundaries that keep inode's backend swappable.
-All interfaces live in `internal/adapters/*/adapter.go`.
-
-### LLM Adapter
-
-```go
-// internal/adapters/llm/adapter.go
-
-type ClassifyResult struct {
-    Category    string
-    Tags        []string
-    IsSensitive bool
-    Summary     string
-}
-
-type LLMAdapter interface {
-    // Classify returns category, tags, sensitivity, and a one-line summary.
-    // Called when a note is added without explicit metadata.
-    Classify(ctx context.Context, content string, categories []Category, tags []string) (ClassifyResult, error)
-
-    // Answer performs RAG generation: query + retrieved notes → natural language answer.
-    Answer(ctx context.Context, query string, notes []model.Note) (string, error)
-
-    // Summarize returns a one-line description of the note content.
-    Summarize(ctx context.Context, content string) (string, error)
-}
-```
-
-### Embedding Adapter
-
-```go
-// internal/adapters/embedding/adapter.go
-
-type EmbeddingAdapter interface {
-    // Embed converts text to a float32 vector.
-    // Voyage AI (voyage-3) returns 1024 dimensions.
-    // All embeddings in the DB must use the same model.
-    Embed(ctx context.Context, text string) ([]float32, error)
-}
-```
-
-### DB Adapter
-
-```go
-// internal/adapters/db/adapter.go
-
-type Filters struct {
-    Category    string
-    Tags        []string
-    IsSensitive *bool
-}
-
-type DBAdapter interface {
-    Save(ctx context.Context, note *model.Note) (string, error)
-    Get(ctx context.Context, id string) (*model.Note, error)
-    Delete(ctx context.Context, id string) error
-
-    // SearchSimilar returns top-K notes by cosine similarity to vec,
-    // optionally filtered by Filters.
-    SearchSimilar(ctx context.Context, vec []float32, topK int, filters Filters) ([]*model.Note, error)
-
-    List(ctx context.Context, filters Filters, limit, offset int) ([]*model.Note, error)
-}
-```
-
----
-
-## 4. Data Flow: `inode add`
-
-```
-User: inode add "My Stripe test key is sk_test_xxxxx"
-
-Step 1 — cmd/add.go
-  Parse arguments. No category/tags provided → auto-detect mode.
-
-Step 2 — TaggerService.Classify(content)
-  LLMAdapter.Classify(content, predefined_categories, predefined_tags)
-  → Claude API call:
-      "Classify this note given these categories: [...]
-       Return JSON: { category, tags, is_sensitive, summary }"
-  ← { category: "credentials", tags: ["stripe", "payment"],
-      is_sensitive: true, summary: "Stripe test secret key" }
-
-Step 3 — EmbeddingAdapter.Embed(content)
-  → Voyage AI HTTP call (POST /embeddings)
-  ← []float32{0.124, 0.876, ..., 0.341}   (1024 values)
-
-Step 4 — Encryption (because is_sensitive=true)
-  key = Argon2id(OS_keychain_secret, config_salt)
-  iv  = 12 random bytes (crypto/rand)
-  ciphertext, auth_tag = AES_256_GCM_Seal(key, iv, []byte(content), noteID)
-  note.ContentEnc  = iv + auth_tag + ciphertext  (single []byte)
-  note.ContentPlain = ""
-
-Step 5 — DBAdapter.Save(note)
-  INSERT INTO notes (id, content_enc, summary, category, tags,
-                     is_sensitive, created_at, updated_at)
-  INSERT INTO note_embeddings (note_id, embedding)
-
-Step 6 — CLI output (Lipgloss formatted)
-  ✓ Auto-detected: category=credentials, tags=[stripe, payment]
-  ✓ Flagged as: sensitive=true
-  ✓ Saved as note abc123
-```
-
----
-
-## 5. Data Flow: `inode ask`
-
-```
-User: inode ask "stripe test key"
-
-Step 1 — cmd/ask.go
-  Parse query string. Check for --reveal flag.
-
-Step 2 — EmbeddingAdapter.Embed(query)
-  → Voyage AI HTTP call
-  ← queryVec []float32 (1024 values)
-
-Step 3 — DBAdapter.SearchSimilar(queryVec, topK=5, filters={})
-  SQL (sqlite-vec):
-    SELECT n.*, vec_distance_cosine(e.embedding, ?) AS score
-    FROM notes n
-    JOIN note_embeddings e ON e.note_id = n.id
-    ORDER BY score ASC
-    LIMIT 5
-  ← []*model.Note — top 5 matches
-
-Step 4 — Decrypt sensitive notes in memory
-  For each note where IsSensitive=true:
-    plaintext = AES_256_GCM_Open(key, note.ContentEnc, noteID)
-  Plaintext never written to disk.
-
-Step 5 — SearchService builds context string
-  Join decrypted note content for top-K notes.
-
-Step 6 — LLMAdapter.Answer(query, notes)
-  → Claude API call:
-      "Answer using only these notes as context: [...]
-       User query: stripe test key"
-  ← "Your Stripe test secret key is in note abc123."
-
-Step 7 — cmd/ask.go output
-  --reveal not set → mask sensitive values (sk_test_******)
-  --reveal set     → print "Reveal sensitive value? [y/N]"
-                     on 'y': print full plaintext
-```
-
----
-
-## 6. Encryption Design
-
-```
-First run (inode config init):
-  secret ← crypto/rand, 32 bytes → stored in OS keychain (go-keyring)
-  salt   ← crypto/rand, 16 bytes → stored in ~/.inode/config.toml (base64)
-
-Key derivation (per process, result never persisted):
-  key = argon2.IDKey(
-    password = secret,         // from OS keychain
-    salt     = salt,           // from config
-    time     = 2,
-    memory   = 64 * 1024,      // 64MB
-    threads  = 1,
-    keyLen   = 32,
-  )
-
-Encrypting a note:
-  iv        = 12 random bytes (crypto/rand, new per note)
-  aead, _  := aes.NewCipher(key) → cipher.NewGCM(aead)
-  sealed   := gcm.Seal(nil, iv, []byte(plaintext), []byte(noteID))
-  // sealed = ciphertext + 16-byte auth tag (appended by GCM)
-
-Stored in DB as single BLOB:
-  []byte{ iv[0:12] | sealed... }   (iv + ciphertext + auth_tag)
-
-Decrypting:
-  iv       = blob[0:12]
-  sealed   = blob[12:]
-  plain, _ = gcm.Open(nil, iv, sealed, []byte(noteID))
-  // GCM Open verifies auth tag — returns error if tampered
-```
-
-**Linux headless fallback:** When `go-keyring` fails (no desktop session / WSL /
-headless SSH), inode falls back to a key file at `~/.inode/.key` with `chmod 600`.
-This is warned about on first run.
-
----
-
-## 7. RAG Pipeline
-
-inode is a RAG (Retrieval-Augmented Generation) system. Three stages:
-
-**Indexing** — at `inode add`:
-```
-note content → Embed() → float32 vector stored in DB alongside note
-```
-
-**Retrieval** — at `inode ask`:
-```
-user query → Embed() → cosine similarity search → top-K notes returned
-```
-
-**Generation** — at `inode ask`:
-```
-top-K notes injected as context → Claude answers using YOUR data only
-```
-
-Claude never sees the full notes database — only the top-K most relevant notes.
-This keeps latency low, cost minimal, and context tightly focused.
-
-**Why cosine similarity?** It measures the angle between vectors, not magnitude.
-Notes of different lengths expressing the same meaning will score close together.
-Euclidean distance penalises length differences and performs worse for text.
-
----
-
-## 8. Auto-Tagging Flow
-
-```
-                       User adds note
-                             │
-              ┌──────────────▼──────────────┐
-              │  Did user specify category   │
-              │       AND tags?              │
-              └──────┬───────────────┬───────┘
-                   YES               NO
-                     │               │
-                     ▼               ▼
-             Validate against   Send to Claude:
-             predefined list    "Classify this note given
-             (fuzzy match via   categories: [...] tags: [...]"
-              Claude if needed)
-                     │               │
-                     └───────┬───────┘
-                             ▼
-                  { category, tags, is_sensitive, summary }
-                             │
-                             ▼
-                   Store note with metadata + embedding
-```
-
----
-
-## 9. Phase 2: CLI → Server Transition
-
-In Phase 2, the CLI stops calling `internal/core` directly and issues HTTP requests
-to a Go + chi server. The core service layer and all adapters are unchanged —
-they move into the server process. Same language, same packages, no rewrite.
-
-```
-Phase 1:                              Phase 2:
-┌─────────┐                           ┌─────────┐   HTTPS   ┌──────────────┐
-│   CLI   │──▶ internal/core ──▶ DB   │   CLI   │──────────▶│  chi Server  │
-└─────────┘                           └─────────┘           │              │
-                                                            │ internal/core│
-                                                            │ adapters/    │
-                                                            │ PostgreSQL   │
-                                                            └──────────────┘
-```
-
-The adapter interfaces are the only seam. Swapping `sqlite.go` for `postgres.go`
-is the entire DB migration. NoteService, SearchService, TaggerService — untouched.
-
----
-
-## 10. Phase 1 SQLite Schema
-
-```sql
-CREATE TABLE notes (
-    id            TEXT PRIMARY KEY,    -- UUID v4
-    content_enc   BLOB,                -- iv + ciphertext + auth_tag (null if not sensitive)
-    content_plain TEXT,                -- plaintext (null if sensitive)
-    summary       TEXT    NOT NULL,    -- LLM-generated one-liner
-    category      TEXT    NOT NULL,
-    tags          TEXT    NOT NULL,    -- JSON array e.g. '["stripe","payment"]'
-    is_sensitive  INTEGER NOT NULL DEFAULT 1,
-    created_at    TEXT    NOT NULL,    -- RFC3339
-    updated_at    TEXT    NOT NULL
-);
-
--- sqlite-vec virtual table for ANN similarity search
-CREATE VIRTUAL TABLE note_embeddings USING vec0(
-    note_id   TEXT PRIMARY KEY,
-    embedding FLOAT[1024]              -- voyage-3 produces 1024-dim vectors
-);
-```
-
----
-
-## 11. Config Resolution Order
-
-```
-1. CLI flags          --sensitive, --category, --tags, --reveal
-2. Environment vars   INODE_LLM_BACKEND, INODE_LLM_MODEL, INODE_API_KEY
-3. ~/.inode/config.toml
-4. Hardcoded defaults
-```
-
----
-
-## 12. Go Module Dependencies
-
-| Module | Purpose | Phase |
+| Package | Files | Responsibility |
 |---|---|---|
-| `github.com/anthropics/anthropic-sdk-go` | Claude API | 1 |
-| `github.com/spf13/cobra` | CLI framework | 1 |
-| `github.com/charmbracelet/lipgloss` | Terminal styling | 1 |
-| `github.com/charmbracelet/bubbles` | Spinners, tables, prompts | 1 |
-| `github.com/asg017/sqlite-vec-go-bindings` | sqlite-vec vector search | 1 |
-| `github.com/mattn/go-sqlite3` | SQLite driver (CGO) | 1 |
-| `github.com/zalando/go-keyring` | OS keychain (Mac/Linux/Windows) | 1 |
-| `github.com/BurntSushi/toml` | TOML config parsing | 1 |
-| `github.com/google/uuid` | UUID generation | 1 |
-| `golang.org/x/crypto/argon2` | Argon2id key derivation | 1 |
-| `github.com/go-chi/chi/v5` | HTTP router | 2 |
-| `github.com/jackc/pgx/v5` | PostgreSQL driver | 2 |
-| `github.com/pgvector/pgvector-go` | pgvector client | 2 |
-| `github.com/golang-jwt/jwt/v5` | JWT auth | 2 |
-| `github.com/pressly/goose/v3` | DB migrations | 2 |
+| `cmd` | `root.go`, `add.go`, `get.go`, `list.go`, `note.go`, `config.go`, `mcp.go` | Commands, flags, output formatting, confirmation prompts |
+| `internal/core` | `container.go` | Builds every adapter and service from the config; runs the one-time summary check |
+| | `notes.go` | `NoteService`: add (classify, embed, encrypt, save), get (decrypt), list, delete |
+| | `search.go` | `SearchService`: embed the query, vector search, distance filter, decrypt, LLM answer; `MaskSensitive` |
+| | `tagger.go` | `TaggerService`: category, tags, sensitivity and summary, explicit flags first |
+| | `summary.go` | Keeps secrets out of summaries of sensitive notes (#53) |
+| | `encryption.go` | `KeyManager` (master secret, salt, Argon2id), `Encrypt` / `Decrypt` (AES-256-GCM) |
+| `internal/adapters/db` | `adapter.go`, `sqlite.go`, `postgres.go`, `migrate.go` | Storage and vector search; schema migrations |
+| `internal/adapters/llm` | `adapter.go`, `ollama.go`, `claude.go`, `openai.go` | Classify, answer, summarize |
+| `internal/adapters/embedding` | `adapter.go`, `ollama.go`, `voyage.go` | Text to vector |
+| `internal/mcp` | `server.go`, `tools.go` | `search_notes`, `list_notes`, `get_note` |
+| `internal/config` | `settings.go` | `Config` struct, defaults, environment variables, config file |
+| `internal/model` | `note.go` | `Note`, the fixed category list |
+
+## 3. Adapters
+
+Each backend is an implementation of one interface. `core.NewContainer`
+(`internal/core/container.go`) picks the implementation from the config and
+fails with the list of supported values for anything else.
+
+| Interface | Methods | Implementations | Config key |
+|---|---|---|---|
+| `db.Adapter` | `Save`, `Get`, `Delete`, `SearchSimilar`, `List`, `UncheckedSensitive`, `SetSummary`, `Close` | `sqlite` (default), `postgres` | `db.backend` |
+| `llm.Adapter` | `Classify`, `Answer`, `Summarize` | `ollama` (default), `claude-api`, `openai` | `llm.backend` |
+| `embedding.Adapter` | `Embed` | `ollama` (default), `voyage` | `embedding.backend` |
+
+Backend details:
+
+| Backend | Talks to | Default model | Notes |
+|---|---|---|---|
+| LLM `ollama` | `<llm.base_url>/api/chat` | `llama3.2` | JSON output via `"format":"json"` |
+| LLM `claude-api` | Anthropic API (official Go SDK) | Claude Sonnet 4.5 when `llm.model` is empty | needs `llm.api_key` |
+| LLM `openai` | `<base_url>/chat/completions`, plain `net/http` | `gpt-4o-mini` when `llm.model` is empty | JSON mode; base URL defaults to `https://api.openai.com/v1` only when empty (see #31) |
+| Embedding `ollama` | `<embedding.base_url>/api/embed` | `nomic-embed-text`, 768 dimensions | |
+| Embedding `voyage` | `https://api.voyageai.com/v1/embeddings` | `voyage-3`, 1024 dimensions | needs `embedding.api_key` |
+
+Embedding adapters must return L2-normalised vectors (`embedding/adapter.go`):
+the distance threshold in search assumes unit vectors. All notes in one
+database must use the same embedding model and dimension; the dimension is
+fixed into the schema when the database is created.
+
+`llm.Answer` returns the answer, whether the notes contained it, and the
+short IDs of the notes it used. Search shows only those notes as sources.
+
+## 4. `inode add`
+
+`cmd/add.go` then `NoteService.Add` (`internal/core/notes.go`):
+
+1. **Sensitivity default.** Without `--sensitive` or `--no-sensitive`, the
+   note uses `defaults.sensitive` (true by default).
+2. **Classify** (`TaggerService.Classify`, `tagger.go`). If `--category`,
+   `--tags` and a sensitivity flag are all given, the LLM is asked only for a
+   summary. Otherwise the LLM classifies the note against the fixed category
+   list (`model.Categories`) and a suggested tag list; an unknown category
+   becomes `notes`. Explicit flags override the LLM's choices. Categories and
+   tags are lowercased.
+3. **Summary check.** For a sensitive note, a summary that is empty or copies
+   a secret-looking token from the content is replaced with
+   `<category> (sensitive): <tags>` (`summary.go`, #53).
+4. **Embed** the full content (`embedding.Adapter.Embed`).
+5. **Encrypt** if sensitive: AES-256-GCM with a key derived from the master
+   secret (section 6). The plaintext is not stored.
+6. **Save.** The adapter assigns a UUID; the CLI prints the first 8 characters.
+
+Output (`cmd/add.go`):
+
+```
+  category=runbooks  tags=[vault, postgres, staging]  sensitive=true
+  saved  id=a1b2c3d4
+```
+
+## 5. `inode get`
+
+`inode get <query>` (aliases `ask`, `find`, `search`), `cmd/get.go` then
+`SearchService.Search` (`internal/core/search.go`). The spinner
+(`internal/cli/spinner.go`) shows each step on stderr and clears before output.
+
+1. **embedding query**: embed the query with the same embedding backend.
+2. **searching**: `db.Adapter.SearchSimilar` returns the `search.top_k`
+   nearest notes (default 5) by L2 distance, then notes farther than
+   `search.max_distance` (default 1.0, about cosine similarity 0.5 for unit
+   vectors) are dropped. If nothing is left, the answer is
+   `No relevant notes found.` and the LLM is not called.
+3. Sensitive candidates are decrypted in memory for the LLM.
+4. **thinking**: `llm.Answer` gets the query and the candidates and returns
+   an answer plus the IDs of the notes it used. Only those are shown as sources.
+5. Sources are masked unless `--reveal` is passed and confirmed.
+
+Output:
+
+```
+Run vault write database/rotate-root/staging, then restart the api.
+
+── Sources (1 note(s)) ──
+  #a1b2c3d4  Rotate staging DB creds  [runbooks] [vault, postgres, staging]  [sensitive]
+```
+
+Other commands: `inode list` (filters `--category`, `--tag`, `--limit`;
+sensitive notes only with `--sensitive` and a confirmation), `inode note get <id>`
+(asks before revealing sensitive content), `inode note delete <id>`,
+`inode config set|show`, `inode mcp`, `inode version`. Note IDs are matched by
+prefix (`id LIKE '<prefix>%'`); see #90 for the ambiguity this allows.
+
+## 6. Encryption and keys
+
+`internal/core/encryption.go`.
+
+| Item | Where | Details |
+|---|---|---|
+| Master secret | OS keychain, service `inode`, account `master-secret` (macOS Keychain, Linux Secret Service, Windows Credential Manager via `go-keyring`) | 32 random bytes, base64 |
+| Fallback secret file | `~/.inode/.key`, mode 0600 | Used only when no keychain is reachable (headless Linux); a warning is printed when it is written |
+| Salt | `~/.inode/.salt`, mode 0600 | Random, created on first run |
+| Data key | derived per use | Argon2id(secret, salt), time 2, memory 64 MB, 1 thread, 32-byte key |
+| Ciphertext | `notes.content_enc` | 12-byte random nonce followed by the AES-256-GCM sealed content |
+
+**First-run rule (#104).** A new master secret is created only when the
+keychain has no item *and* neither `.salt` nor `.key` exists. Any other
+keychain error (locked keychain, denied prompt, unreachable service) stops
+inode with an explanation and writes nothing, so an existing secret is never
+replaced.
+
+**Known gap (#100).** The GCM additional data is the constant `"note"`, not
+the note ID, so ciphertexts are not bound to their row.
+
+## 7. What is and is not protected for sensitive notes
+
+| Data | Stored as | Shown |
+|---|---|---|
+| Content | Encrypted (section 6) | Masked as `••••••` unless revealed with confirmation (`get --reveal`, `note get`, `list --sensitive`) |
+| Summary | Plaintext, checked for copied secrets (#53) | In `list`, `get` sources, `note get` |
+| Category, tags | Plaintext | Everywhere |
+| Embedding | Plaintext vector | Never shown; not reversible to text, but encodes meaning |
+
+With a cloud backend (`claude-api`, `openai`, `voyage`), note content, including
+sensitive content, is sent to that provider on `add` (classify, embed) and on
+`get` (answer). `SECURITY.md` lists all known limitations.
+
+## 8. Storage
+
+### SQLite (default)
+
+`internal/adapters/db/sqlite.go`. File `~/.inode/notes.db` (or `db.path`),
+opened with WAL journaling. Vectors live in a `vec0` virtual table from
+[sqlite-vec](https://github.com/asg017/sqlite-vec) (CGO). Similarity search is
+a KNN query (`embedding MATCH ? AND k = ?`) ordered by L2 distance; category,
+tag and sensitivity filters are applied to the K results in Go, so a filtered
+search can return fewer than K notes.
+
+### Postgres
+
+`internal/adapters/db/postgres.go`, selected with `db.backend = postgres` and
+`db.dsn`. Uses `pgx` and [pgvector](https://github.com/pgvector/pgvector);
+`CREATE EXTENSION IF NOT EXISTS vector` runs on connect. The embedding is a
+`vector(<dimension>)` column on `notes`; search orders by the `<->` (L2)
+operator with filters in the SQL `WHERE` clause.
+
+## 9. Schema and migrations
+
+`internal/adapters/db/migrate.go` (#85). Migrations are numbered from 1 with
+no gaps and run in order when the adapter opens the database.
+
+| Version | SQLite | Postgres |
+|---|---|---|
+| 1 | `notes` (id, content_enc, content_plain, summary, category, tags JSON text, is_sensitive, created_at, updated_at); `note_embeddings` vec0 table (note_id, embedding FLOAT[dim]) | `notes` with the same columns, `tags JSONB`, `embedding vector(dim)` |
+| 2 | `summary_checked` column; non-sensitive rows marked checked | same |
+
+| | SQLite | Postgres |
+|---|---|---|
+| Applied version | `PRAGMA user_version` | `schema_migrations (version, name, applied_at)` |
+| Atomicity | One transaction per migration | All pending migrations in one transaction |
+| Concurrency | Single process | `pg_advisory_xact_lock` held while migrating |
+| Backup | `notes.db.bak-v<from>-<timestamp>` written with `VACUUM INTO` before upgrading an existing database | none (use your Postgres backups) |
+| Database newer than the binary | Refused with `ErrSchemaTooNew` | same |
+
+Databases created before migrations existed are recognised as version 1
+without changes. After migration 2, `ScrubSensitiveSummaries`
+(`summary.go`) checks the old sensitive summaries once and records each check
+in `summary_checked`.
+
+## 10. MCP server
+
+`inode mcp` (`cmd/mcp.go`, `internal/mcp/`) serves the Model Context Protocol
+over stdio with [mcp-go](https://github.com/mark3labs/mcp-go). All three tools
+are marked read-only and idempotent, so clients do not ask for approval on
+every call.
+
+| Tool | Does | Sensitive notes (default) |
+|---|---|---|
+| `search_notes` | Retrieval only (no LLM answer); returns the matching notes for the agent to read | content masked |
+| `list_notes` | Lists by category or tag | left out entirely |
+| `get_note` | One note by ID | content masked, summary withheld |
+
+`mcp.reveal_sensitive = true` turns the masking off for all three.
+
+## 11. Configuration
+
+`internal/config/settings.go`. Sources, highest priority first:
+
+1. Environment variables: `INODE_` plus the key with `.` replaced by `_`
+   (`INODE_LLM_API_KEY`, `INODE_DB_DSN`, `INODE_DB_PATH`, ...).
+2. A `.env` file in the current directory (loaded into the environment; does
+   not override variables already set).
+3. `~/.inode/config.toml`, written by `inode config set`.
+4. Defaults:
+
+| Key | Default |
+|---|---|
+| `llm.backend`, `llm.model`, `llm.base_url` | `ollama`, `llama3.2`, `http://localhost:11434` |
+| `embedding.backend`, `embedding.model`, `embedding.base_url`, `embedding.dimension` | `ollama`, `nomic-embed-text`, `http://localhost:11434`, `768` |
+| `db.backend`, `db.path`, `db.dsn` | `sqlite`, `~/.inode/notes.db`, empty |
+| `defaults.sensitive` | `true` |
+| `search.max_distance`, `search.top_k` | `1.0`, `5` |
+| `mcp.reveal_sensitive` | `false` |
+| `log.level` | `info` |
+
+Known issues: cloud backends inherit the Ollama defaults for model and base
+URL unless you set them (#31); `config set` rejects some valid keys (#81);
+`config.toml` permissions (#82). The full reference is #74.
+
+## 12. Files on disk
+
+`~/.inode/`, created with mode 0700:
+
+| File | Purpose |
+|---|---|
+| `config.toml` | Settings, including API keys if you set them |
+| `notes.db` (+ `-wal`, `-shm`) | SQLite database |
+| `notes.db.bak-v<n>-<timestamp>` | Backup made before a schema upgrade |
+| `.salt` | Argon2id salt |
+| `.key` | Master secret, only on machines without a keychain |
+
+## 13. Dependencies
+
+Direct dependencies (`go.mod`): `spf13/cobra` (CLI), `spf13/viper` and
+`joho/godotenv` (config), `mattn/go-sqlite3` and `asg017/sqlite-vec-go-bindings`
+(SQLite, CGO), `jackc/pgx/v5` and `pgvector/pgvector-go` (Postgres),
+`anthropics/anthropic-sdk-go` (Claude), `mark3labs/mcp-go` (MCP),
+`zalando/go-keyring` (keychain), `golang.org/x/crypto` (Argon2id),
+`google/uuid`, `fatih/color` and `mattn/go-isatty` (output).
+The SQLite backend needs CGO and a C compiler; see `CONTRIBUTING.md`.
+
+## What's next
+
+Teams and organizations (shared notes with owner, team and mode bits, a
+self-hosted server, scoped search) are designed in the open: the proposal
+and its spikes are tracked in #35 and the Phase milestones on the
+[board](https://github.com/orgs/BiSemaphore/projects/1). Nothing in this
+document describes that work; it will be added here as it ships.

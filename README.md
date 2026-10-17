@@ -170,9 +170,8 @@ If the LLM proposes something else, the classifier falls back to `notes`. You ca
 
 ## Documentation
 
-- [`docs/spec.md`](docs/spec.md) — full product specification
-- [`docs/architecture.md`](docs/architecture.md) — technical architecture
-- [`docs/logo.svg`](docs/logo.svg) — standalone logo for forks / social
+- [`docs/spec.md`](docs/spec.md): what inode does, for whom, and what it does not do
+- [`docs/architecture.md`](docs/architecture.md): how it is built, file by file
 
 ---
 

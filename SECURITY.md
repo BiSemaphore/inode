@@ -53,6 +53,7 @@ fix ships as a new patch or minor version. Upgrade with
 | Master secret | 32 random bytes stored in the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Manager). If no keychain is reachable (headless Linux, WSL), it falls back to `~/.inode/.key` with mode 0600 and prints a warning. An existing secret is never replaced: if the keychain cannot be read after setup, inode stops instead of creating a new one | `internal/core/encryption.go` (`ensureSecret`, `writeKeyFile`) |
 | Salt | `~/.inode/.salt`, mode 0600 | `internal/core/encryption.go` (`loadOrCreateSalt`) |
 | Data directory | `~/.inode` is created with mode 0700 | `cmd/config.go`, `internal/core/encryption.go` (`NewKeyManager`) |
+| Config file | `~/.inode/config.toml` is written with mode 0600; a file written by an earlier version is tightened on the next `inode config set`, and `inode config show` warns while it is not | `internal/config/write.go` |
 | Output masking | Sensitive content is masked by default in `inode get`, `inode list` and `inode note get`; `--reveal`, `list --sensitive` and revealing in `note get` ask for confirmation | `internal/core/search.go` (`MaskSensitive`), `cmd/get.go`, `cmd/list.go`, `cmd/note.go` |
 | MCP server | Sensitive notes are excluded from `search_notes` results and masked in `get_note` unless `mcp.reveal_sensitive` is set; all tools are read-only | `internal/mcp/tools.go`, `internal/mcp/server.go` |
 | Default backends | Ollama (LLM and embeddings) and SQLite run on your machine; nothing leaves it unless you configure a cloud backend | `internal/config/settings.go` (defaults) |
@@ -78,13 +79,15 @@ exist yet.
 - **Embeddings are stored unencrypted** for every note, including sensitive
   ones. Embeddings do not store the text, but they encode its meaning and can
   be partially inverted.
-- **`~/.inode/config.toml` is written with mode 0644 and stores API keys in
-  plaintext.** The 0700 data directory keeps other local users out on a default
-  setup, but copies of the file keep the loose mode.
+- **API keys in `~/.inode/config.toml` are plaintext.** The file is readable
+  only by you (mode 0600), the same model as `~/.aws/credentials` or
+  `~/.netrc`, but anything that runs as you, and any backup or dotfiles repo
+  that copies the file, can read the keys. To keep keys out of the file, set
+  `INODE_LLM_API_KEY` and `INODE_EMBEDDING_API_KEY` in the environment instead.
   [#82](https://github.com/BiSemaphore/inode/issues/82)
 - **The SQLite database file** (`~/.inode/notes.db`) is created with the
-  default mode (typically 0644); it is likewise protected only by the 0700
-  directory.
+  default mode (typically 0644); it is protected only by the 0700 `~/.inode`
+  directory. Sensitive content inside it is encrypted.
 - **Encrypted content is not bound to its note.** The authenticated data is a
   constant, so someone who can write to the database can swap the ciphertext of
   two sensitive notes without detection.

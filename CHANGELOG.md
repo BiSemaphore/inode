@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` now describes what the code actually protects and lists known limitations, including that cloud backends (`claude-api`, `openai`, `voyage`) receive note content in plaintext. Vulnerabilities are reported through GitHub private vulnerability reporting. ([#71](https://github.com/BiSemaphore/inode/issues/71))
 - Release binaries are built with Go 1.26 and `golang.org/x/text` v0.43.0, fixing reachable vulnerabilities in `crypto/tls`, `net/url` and other standard-library packages, and in `golang.org/x/text`. ([#98](https://github.com/BiSemaphore/inode/issues/98))
 - `golang.org/x/crypto` updated to v0.52.0, which fixes 13 advisories in its SSH and SSH-agent packages. inode uses only `x/crypto/argon2` (key derivation), so none of them were reachable, but release binaries no longer ship the affected versions. ([#102](https://github.com/BiSemaphore/inode/pull/102))
+- `~/.inode/config.toml`, which can hold API keys, is now written with mode 0600 instead of 0644. A file written by an earlier version is tightened on the next `inode config set`, and `inode config show` warns while it is readable by others. API keys in the file stay plaintext (like `~/.aws/credentials`); set `INODE_LLM_API_KEY` / `INODE_EMBEDDING_API_KEY` to keep them out of it. ([#82](https://github.com/BiSemaphore/inode/issues/82))
 
 ---
 

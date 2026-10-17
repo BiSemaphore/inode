@@ -43,7 +43,7 @@ neither calls an adapter directly.
 | `internal/adapters/llm` | `adapter.go`, `ollama.go`, `claude.go`, `openai.go` | Classify, answer, summarize |
 | `internal/adapters/embedding` | `adapter.go`, `ollama.go`, `voyage.go` | Text to vector |
 | `internal/mcp` | `server.go`, `tools.go` | `search_notes`, `list_notes`, `get_note` |
-| `internal/config` | `settings.go` | `Config` struct, defaults, environment variables, config file |
+| `internal/config` | `settings.go`, `write.go` | `Config` struct, defaults, environment variables; writing `config.toml` at mode 0600 |
 | `internal/model` | `note.go` | `Note`, the fixed category list |
 
 ## 3. Adapters
@@ -247,9 +247,13 @@ every call.
 | `mcp.reveal_sensitive` | `false` |
 | `log.level` | `info` |
 
+`inode config set` writes through `config.Set` (`internal/config/write.go`),
+which keeps the file at mode 0600 because it can hold API keys in plaintext;
+`inode config show` warns if the file is readable by others.
+
 Known issues: cloud backends inherit the Ollama defaults for model and base
-URL unless you set them (#31); `config set` rejects some valid keys (#81);
-`config.toml` permissions (#82). The full reference is #74.
+URL unless you set them (#31); `config set` rejects some valid keys (#81).
+The full reference is #74.
 
 ## 12. Files on disk
 
@@ -257,7 +261,7 @@ URL unless you set them (#31); `config set` rejects some valid keys (#81);
 
 | File | Purpose |
 |---|---|
-| `config.toml` | Settings, including API keys if you set them |
+| `config.toml` | Settings, including API keys if you set them; mode 0600 |
 | `notes.db` (+ `-wal`, `-shm`) | SQLite database |
 | `notes.db.bak-v<n>-<timestamp>` | Backup made before a schema upgrade |
 | `.salt` | Argon2id salt |

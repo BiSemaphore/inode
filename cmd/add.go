@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/shahid-io/inode/internal/core"
+	"github.com/BiSemaphore/inode/internal/core"
 	"github.com/spf13/cobra"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shahid-io/inode/internal/adapters/db"
-	"github.com/shahid-io/inode/internal/adapters/embedding"
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/adapters/db"
+	"github.com/BiSemaphore/inode/internal/adapters/embedding"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // NoteService orchestrates saving, fetching, and deleting notes.

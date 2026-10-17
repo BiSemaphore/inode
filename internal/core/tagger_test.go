@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/shahid-io/inode/internal/adapters/llm"
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/adapters/llm"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // stubLLM is the minimal adapter needed to drive TaggerService — only

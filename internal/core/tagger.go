@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/shahid-io/inode/internal/adapters/llm"
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/adapters/llm"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // TaggerService classifies notes into categories and tags.

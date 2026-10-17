@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 func TestContentFor_NonSensitive_ReturnsPlaintext(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahid-io/inode/internal/adapters/db"
-	"github.com/shahid-io/inode/internal/core"
+	"github.com/BiSemaphore/inode/internal/adapters/db"
+	"github.com/BiSemaphore/inode/internal/core"
 	"github.com/spf13/cobra"
 )
 

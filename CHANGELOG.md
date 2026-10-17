@@ -68,8 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite + sqlite-vec for local vector similarity search
 - Docker Compose setup for Ollama
 
-[Unreleased]: https://github.com/shahid-io/inode/compare/v0.3.0...HEAD
-[0.3.0]: https://github.com/shahid-io/inode/compare/v0.2.1...v0.3.0
-[0.2.1]: https://github.com/shahid-io/inode/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/shahid-io/inode/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/shahid-io/inode/releases/tag/v0.1.0
+[Unreleased]: https://github.com/BiSemaphore/inode/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/BiSemaphore/inode/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/BiSemaphore/inode/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/BiSemaphore/inode/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/BiSemaphore/inode/releases/tag/v0.1.0

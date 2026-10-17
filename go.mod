@@ -1,4 +1,4 @@
-module github.com/shahid-io/inode
+module github.com/BiSemaphore/inode
 
 go 1.25.5
 

@@ -1,0 +1,86 @@
+name: Spike
+description: A time-boxed investigation that answers a design question before anything is built.
+title: "Spike: "
+type: Spike
+labels: ["needs-design"]
+projects: ["BiSemaphore/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A spike ends in a decision, usually an ADR in `docs/adr/`, and a list of issues to file. Writing guide: [docs/issue-guide.md](https://github.com/BiSemaphore/inode/blob/main/docs/issue-guide.md#spike)
+
+  - type: input
+    id: question
+    attributes:
+      label: Question
+      description: One sentence the spike must answer.
+      placeholder: How do we ... when ...?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it blocks
+      description: Which issues or decisions wait on the answer.
+    validations:
+      required: true
+
+  - type: input
+    id: timebox
+    attributes:
+      label: Time box
+      description: How much effort before deciding with what is known.
+      placeholder: one working session
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Facts that constrain the answer. Cite code, measurements, prior decisions.
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: Each option with its trade-offs; a table works well. Say which way you lean and why.
+    validations:
+      required: true
+
+  - type: textarea
+    id: work
+    attributes:
+      label: Work
+      description: "The concrete steps: prototypes, measurements, reading."
+
+  - type: dropdown
+    id: deliverable
+    attributes:
+      label: Deliverable
+      options:
+        - ADR in docs/adr/
+        - Decision comment on this issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: exit
+    attributes:
+      label: Exit criteria
+      description: Checklist that says the spike is done.
+      placeholder: |
+        - [ ] Options measured / compared
+        - [ ] Decision recorded
+    validations:
+      required: true
+
+  - type: textarea
+    id: after
+    attributes:
+      label: What gets filed after
+      description: The issues this decision unlocks.
+    validations:
+      required: true

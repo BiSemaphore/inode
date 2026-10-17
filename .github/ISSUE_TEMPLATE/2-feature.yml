@@ -1,0 +1,79 @@
+name: Feature
+description: New capability a user can notice. If the design is still open, file a Spike instead.
+title: "feat: "
+type: Feature
+labels: ["enhancement"]
+projects: ["BiSemaphore/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A feature issue should let someone build it without a meeting. Writing guide: [docs/issue-guide.md](https://github.com/BiSemaphore/inode/blob/main/docs/issue-guide.md#feature)
+        Dependencies (blocked by, parent epic) are added as GitHub links after the issue is created.
+
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      description: Who wants this, what they want, and why.
+      placeholder: As a <kind of user>, I want <capability>, so that <outcome>.
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: Background
+      description: How things work today and why that is not enough. Cite files (`cmd/get.go`) and related issues.
+    validations:
+      required: true
+
+  - type: textarea
+    id: in_scope
+    attributes:
+      label: In scope
+      description: What this issue delivers. Commands, flags, config keys, behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_scope
+    attributes:
+      label: Out of scope
+      description: Related things this issue deliberately does not do (and where they are tracked, if anywhere).
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable statements, one per line.
+      placeholder: |
+        - Given <state>, when <action>, then <observable result>.
+        - Given ..., when ..., then ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical
+    attributes:
+      label: Technical notes
+      description: Approach, files to touch, existing functions to reuse, risks.
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related
+      description: Related issues and PRs (dependencies are linked natively after creation).
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size
+      options:
+        - "S: one sitting"
+        - "M: a few sittings"
+        - "L: needs splitting or a spike first"
+    validations:
+      required: true

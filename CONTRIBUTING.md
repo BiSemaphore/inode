@@ -54,6 +54,12 @@ make lint     # golangci-lint run ./... (config in .golangci.yml)
 
 `make help` lists every target. To try your build: `./inode --help`.
 
+**Do not run the binary with a substitute `HOME`** (for example to test against
+a copy of `~/.inode`), especially on macOS: the OS keychain is located through
+`HOME`, and the master secret lives there. Tests use `keyring.MockInit()` from
+`github.com/zalando/go-keyring` instead of the real keychain; to run the binary
+against a copy of a database, set `INODE_DB_PATH` and keep your real `HOME`.
+
 ### Postgres backend (optional)
 
 `docker-compose.yml` starts Postgres with pgvector (and Ollama). The Postgres

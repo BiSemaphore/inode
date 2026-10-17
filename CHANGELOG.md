@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.3.0 remain installable under the old `github.com/shahid-io/inode` path.
+
 ---
 
 ## [0.3.0] - 2026-05-13

@@ -192,8 +192,8 @@ granular as you like; only the PR title and description end up on `main`.
   It becomes the commit message on `main`.
 - **Fill in the PR template**: what changed, how you validated it, and the checklist.
 - **Run the checks locally** before pushing: `make build`, `make test`, `make lint`.
-- **Required checks on `main`**: Test (macos-latest), Test (ubuntu-latest), Lint.
-  CI also runs the tests on Windows.
+- **Required checks on `main`**: Test (macos-latest), Test (ubuntu-latest), Lint,
+  Vulnerability check (`govulncheck`). CI also runs the tests on Windows.
 - **Resolve every review conversation** before merging; branch protection
   enforces this.
 - **Merge with "Squash and merge"**. Delete the branch afterwards.

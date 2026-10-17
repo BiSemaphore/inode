@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenAI LLM backend, opt-in via `llm.backend = openai`. Plain `net/http` against the Chat Completions API (no SDK dependency), JSON mode for classification and answers. Defaults to `gpt-4o-mini`; `llm.base_url` targets Azure OpenAI or any compatible endpoint. Ollama stays the default.
 
 ### Fixed
+- `inode version` reports the real version for `go install` builds (for example `v0.5.0`) instead of `dev`, and the commit and time for builds from a git checkout; the MCP server reports the same version to clients. Release archives are unchanged. ([#32](https://github.com/BiSemaphore/inode/issues/32))
 - Summaries of sensitive notes no longer expose the secret. They were stored and shown in plaintext in `inode list`, `inode get` sources, `inode note get` and MCP; when the LLM was unavailable the summary was the first 80 characters of the secret itself. New summaries are checked against the note and replaced with a neutral `<category> (sensitive): <tags>` when they contain secret-looking values; summaries stored by earlier versions are checked once on first run and fixed the same way. MCP `list_notes` now leaves out sensitive notes unless `mcp.reveal_sensitive` is set, and `get_note` no longer returns their summary. ([#53](https://github.com/BiSemaphore/inode/issues/53))
 
 ### Changed

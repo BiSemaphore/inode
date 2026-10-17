@@ -73,35 +73,6 @@ func NewPostgresAdapter(ctx context.Context, dsn string, dimension int) (*Postgr
 	return a, nil
 }
 
-// migrate enables pgvector and creates the notes table on first run.
-//
-// Dimension is baked into the schema. If embedding.dimension changes after
-// a database is provisioned, the migration is a no-op (CREATE IF NOT EXISTS)
-// and inserts of the new size will fail with a clear pgvector error — that
-// is the same constraint the SQLite path has, just surfaced differently.
-func (a *PostgresAdapter) migrate(ctx context.Context) error {
-	// CREATE EXTENSION is handled in AfterConnect (so type registration on
-	// every new pool connection can rely on it). All that's left here is
-	// the schema.
-	stmt := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS notes (
-			id            TEXT PRIMARY KEY,
-			content_enc   BYTEA,
-			content_plain TEXT,
-			summary       TEXT        NOT NULL DEFAULT '',
-			category      TEXT        NOT NULL DEFAULT 'notes',
-			tags          JSONB       NOT NULL DEFAULT '[]'::jsonb,
-			is_sensitive  BOOLEAN     NOT NULL DEFAULT TRUE,
-			embedding     vector(%d),
-			created_at    TIMESTAMPTZ NOT NULL,
-			updated_at    TIMESTAMPTZ NOT NULL
-		)`, a.dimension)
-	if _, err := a.pool.Exec(ctx, stmt); err != nil {
-		return fmt.Errorf("create notes table: %w", err)
-	}
-	return nil
-}
-
 // Save persists a note and its embedding. Returns the assigned UUID.
 func (a *PostgresAdapter) Save(ctx context.Context, note *model.Note) (string, error) {
 	if note.ID == "" {

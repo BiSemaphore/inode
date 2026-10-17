@@ -93,8 +93,8 @@ func (a *PostgresAdapter) Save(ctx context.Context, note *model.Note) (string, e
 	}
 
 	_, err = a.pool.Exec(ctx, `
-		INSERT INTO notes (id, content_enc, content_plain, summary, category, tags, is_sensitive, embedding, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		INSERT INTO notes (id, content_enc, content_plain, summary, category, tags, is_sensitive, embedding, created_at, updated_at, summary_checked)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE)`,
 		note.ID,
 		note.ContentEnc,
 		note.ContentPlain,
@@ -201,6 +201,32 @@ func (a *PostgresAdapter) List(ctx context.Context, filters Filters, limit, offs
 // Close releases the pool.
 func (a *PostgresAdapter) Close() error {
 	a.pool.Close()
+	return nil
+}
+
+// UncheckedSensitive returns sensitive notes whose summary has not been
+// validated against their content.
+func (a *PostgresAdapter) UncheckedSensitive(ctx context.Context) ([]*model.Note, error) {
+	rows, err := a.pool.Query(ctx, `
+		SELECT id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at
+		FROM notes
+		WHERE is_sensitive AND NOT summary_checked`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanPgNotes(rows, Filters{})
+}
+
+// SetSummary replaces a note's summary and marks it validated.
+func (a *PostgresAdapter) SetSummary(ctx context.Context, id, summary string) error {
+	tag, err := a.pool.Exec(ctx, `UPDATE notes SET summary = $1, summary_checked = TRUE WHERE id = $2`, summary, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("set summary: note %s not found", id)
+	}
 	return nil
 }
 

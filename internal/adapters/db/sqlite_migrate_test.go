@@ -243,3 +243,46 @@ func TestCheckMigrations_RejectsGapsAndEmpty(t *testing.T) {
 		t.Errorf("valid list rejected: %v", err)
 	}
 }
+
+func TestSQLiteMigrate_V2MarksOnlySensitiveLegacyNotesUnchecked(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "notes.db")
+	createLegacySQLite(t, path) // one non-sensitive note
+	raw, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`INSERT INTO notes (id, content_plain, summary, category, tags, is_sensitive, created_at, updated_at)
+		VALUES ('legacy-secret', '', 'leaky', 'credentials', '[]', 1, '2026-06-01T10:00:00Z', '2026-06-01T10:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
+	_ = raw.Close()
+
+	a, err := NewSQLiteAdapter(path, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = a.Close() }()
+	ctx := context.Background()
+
+	got, err := a.UncheckedSensitive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "legacy-secret" {
+		t.Fatalf("UncheckedSensitive = %v, want only legacy-secret", got)
+	}
+
+	if err := a.SetSummary(ctx, "legacy-secret", "credentials (sensitive)"); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := a.UncheckedSensitive(ctx); len(left) != 0 {
+		t.Errorf("still unchecked after SetSummary: %v", left)
+	}
+	n, err := a.Get(ctx, "legacy-secret")
+	if err != nil || n.Summary != "credentials (sensitive)" {
+		t.Errorf("summary = %q, err %v", n.Summary, err)
+	}
+	if err := a.SetSummary(ctx, "does-not-exist", "x"); err == nil {
+		t.Error("SetSummary on a missing note should fail")
+	}
+}

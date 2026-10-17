@@ -40,7 +40,9 @@ Note content:
 %s
 
 Return JSON:
-{"category":"<name>","tags":["tag1","tag2"],"is_sensitive":<bool>,"summary":"<one line, max 80 chars>"}`,
+{"category":"<name>","tags":["tag1","tag2"],"is_sensitive":<bool>,"summary":"<one line, max 80 chars>"}
+
+The summary describes what the note is for. Never copy secret values (keys, tokens, passwords, connection strings) into it.`,
 		formatCategories(categories),
 		strings.Join(tags, ", "),
 		content,
@@ -116,7 +118,7 @@ Query: %s`, buildContext(notes), query)
 
 // Summarize returns a one-line description of note content.
 func (c *ClaudeAdapter) Summarize(ctx context.Context, content string) (string, error) {
-	prompt := fmt.Sprintf("Summarize this note in one concise sentence (max 80 chars). Return only the sentence:\n\n%s", content)
+	prompt := fmt.Sprintf("Summarize what this note is for in one concise sentence (max 80 chars). Never copy secret values (keys, tokens, passwords) into it. Return only the sentence:\n\n%s", content)
 
 	msg, err := c.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     c.model,

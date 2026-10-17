@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - OpenAI LLM backend, opt-in via `llm.backend = openai`. Plain `net/http` against the Chat Completions API (no SDK dependency), JSON mode for classification and answers. Defaults to `gpt-4o-mini`; `llm.base_url` targets Azure OpenAI or any compatible endpoint. Ollama stays the default.
 
+### Fixed
+- Summaries of sensitive notes no longer expose the secret. They were stored and shown in plaintext in `inode list`, `inode get` sources, `inode note get` and MCP; when the LLM was unavailable the summary was the first 80 characters of the secret itself. New summaries are checked against the note and replaced with a neutral `<category> (sensitive): <tags>` when they contain secret-looking values; summaries stored by earlier versions are checked once on first run and fixed the same way. MCP `list_notes` now leaves out sensitive notes unless `mcp.reveal_sensitive` is set, and `get_note` no longer returns their summary. ([#53](https://github.com/BiSemaphore/inode/issues/53))
+
 ### Changed
 - Databases now carry a schema version and are upgraded automatically when a new inode opens them. Before upgrading a SQLite database, inode writes a backup next to it (`notes.db.bak-v<from>-<timestamp>`). A database upgraded by a newer inode is refused instead of being opened. ([#85](https://github.com/BiSemaphore/inode/issues/85))
 - The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.3.0 remain installable under the old `github.com/shahid-io/inode` path.

@@ -47,12 +47,7 @@ func (h *Handler) handleSearchNotes(ctx context.Context, req mcp.CallToolRequest
 
 func (h *Handler) handleListNotes(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	limit := int(req.GetFloat("limit", 20))
-	filters := db.Filters{
-		Category: req.GetString("category", ""),
-	}
-	if tag := req.GetString("tag", ""); tag != "" {
-		filters.Tags = []string{tag}
-	}
+	filters := listFilters(req.GetString("category", ""), req.GetString("tag", ""), h.RevealSensitive)
 
 	notes, err := h.Container.Notes.List(ctx, filters, limit, 0)
 	if err != nil {
@@ -101,6 +96,21 @@ func formatSearchResults(query string, notes []*model.Note, reveal bool) string 
 	return strings.TrimRight(sb.String(), "\n")
 }
 
+// listFilters builds list_notes filters. Like search_notes, sensitive notes
+// are left out entirely unless mcp.reveal_sensitive is set: their summaries
+// and tags would otherwise reach the agent.
+func listFilters(category, tag string, reveal bool) db.Filters {
+	f := db.Filters{Category: category}
+	if tag != "" {
+		f.Tags = []string{tag}
+	}
+	if !reveal {
+		notSensitive := false
+		f.IsSensitive = &notSensitive
+	}
+	return f
+}
+
 func formatNoteList(notes []*model.Note) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d note(s):\n\n", len(notes))
@@ -121,7 +131,9 @@ func formatNoteList(notes []*model.Note) string {
 func formatNote(n *model.Note, reveal bool) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "ID: %s\n", n.ID)
-	fmt.Fprintf(&sb, "Summary: %s\n", n.Summary)
+	if !n.IsSensitive || reveal {
+		fmt.Fprintf(&sb, "Summary: %s\n", n.Summary)
+	}
 	fmt.Fprintf(&sb, "Category: %s\n", n.Category)
 	if len(n.Tags) > 0 {
 		fmt.Fprintf(&sb, "Tags: %s\n", strings.Join(n.Tags, ", "))

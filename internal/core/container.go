@@ -93,6 +93,15 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	notes := NewNoteService(dbAdapter, embAdapter, tagger, keyMgr)
 	search := NewSearchService(dbAdapter, embAdapter, llmAdapter, keyMgr, cfg.Search.MaxDistance, cfg.Search.TopK)
 
+	// One-time check of summaries saved before they were validated (#53).
+	// After the first run this is a single query that returns nothing. A
+	// failure must not block normal use, so it is reported and skipped.
+	if n, err := notes.ScrubSensitiveSummaries(context.Background()); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not check stored summaries of sensitive notes: %v\n", err)
+	} else if n > 0 {
+		fmt.Fprintf(os.Stderr, "inode: replaced %d stored summaries of sensitive notes that contained secret values\n", n)
+	}
+
 	return &Container{
 		Notes:  notes,
 		Search: search,

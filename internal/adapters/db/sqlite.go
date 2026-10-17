@@ -63,8 +63,8 @@ func (a *SQLiteAdapter) Save(ctx context.Context, note *model.Note) (string, err
 	defer tx.Rollback()
 
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO notes (id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO notes (id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at, summary_checked)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
 		note.ID,
 		note.ContentEnc,
 		note.ContentPlain,
@@ -188,6 +188,32 @@ func (a *SQLiteAdapter) Close() error {
 }
 
 // scanNote scans a single row into a Note.
+// UncheckedSensitive returns sensitive notes whose summary has not been
+// validated against their content.
+func (a *SQLiteAdapter) UncheckedSensitive(ctx context.Context) ([]*model.Note, error) {
+	rows, err := a.db.QueryContext(ctx, `
+		SELECT id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at
+		FROM notes
+		WHERE is_sensitive = 1 AND summary_checked = 0`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanNotes(rows, Filters{})
+}
+
+// SetSummary replaces a note's summary and marks it validated.
+func (a *SQLiteAdapter) SetSummary(ctx context.Context, id, summary string) error {
+	res, err := a.db.ExecContext(ctx, `UPDATE notes SET summary = ?, summary_checked = 1 WHERE id = ?`, summary, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return fmt.Errorf("set summary: note %s not found", id)
+	}
+	return nil
+}
+
 func scanNote(row *sql.Row) (*model.Note, error) {
 	var n model.Note
 	var tagsJSON string

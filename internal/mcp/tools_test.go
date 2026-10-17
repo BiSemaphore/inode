@@ -182,3 +182,27 @@ func TestShortID(t *testing.T) {
 		t.Errorf("ID shorter than 8 chars should pass through, got %q", got)
 	}
 }
+
+func TestListFilters_ExcludesSensitiveUnlessRevealed(t *testing.T) {
+	f := listFilters("credentials", "stripe", false)
+	if f.IsSensitive == nil || *f.IsSensitive {
+		t.Fatalf("reveal off: IsSensitive = %v, want pointer to false", f.IsSensitive)
+	}
+	if f.Category != "credentials" || len(f.Tags) != 1 || f.Tags[0] != "stripe" {
+		t.Errorf("filters not carried over: %+v", f)
+	}
+	if f := listFilters("", "", true); f.IsSensitive != nil {
+		t.Errorf("reveal on: IsSensitive = %v, want nil (all notes)", *f.IsSensitive)
+	}
+}
+
+func TestFormatNote_SensitiveWithoutRevealOmitsSummary(t *testing.T) {
+	n := &model.Note{ID: "a1b2c3d4-0000", Summary: "Stripe key sk_live_9x8y7z", Category: "credentials", IsSensitive: true, ContentPlain: "sk_live_9x8y7z"}
+	out := formatNote(n, false)
+	if strings.Contains(out, "Summary") || strings.Contains(out, "sk_live") {
+		t.Errorf("sensitive note leaked through get_note without reveal:\n%s", out)
+	}
+	if out := formatNote(n, true); !strings.Contains(out, "Summary: Stripe key") {
+		t.Errorf("reveal on should include the summary:\n%s", out)
+	}
+}

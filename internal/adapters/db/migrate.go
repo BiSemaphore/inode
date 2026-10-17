@@ -64,6 +64,18 @@ var sqliteMigrations = func(dimension int) []migration {
 				)`, dimension),
 			},
 		},
+		{
+			// Summaries of sensitive notes written before #53 may contain the
+			// secret itself. New summaries are validated when the note is saved;
+			// old ones are validated once by NoteService.ScrubSensitiveSummaries.
+			// Non-sensitive summaries need no check.
+			version: 2,
+			name:    "summary_checked",
+			stmts: []string{
+				`ALTER TABLE notes ADD COLUMN summary_checked INTEGER NOT NULL DEFAULT 0`,
+				`UPDATE notes SET summary_checked = 1 WHERE is_sensitive = 0`,
+			},
+		},
 	}
 }
 
@@ -88,6 +100,15 @@ var postgresMigrations = func(dimension int) []migration {
 					created_at    TIMESTAMPTZ NOT NULL,
 					updated_at    TIMESTAMPTZ NOT NULL
 				)`, dimension),
+			},
+		},
+		{
+			// See the SQLite migration 2 comment.
+			version: 2,
+			name:    "summary_checked",
+			stmts: []string{
+				`ALTER TABLE notes ADD COLUMN summary_checked BOOLEAN NOT NULL DEFAULT FALSE`,
+				`UPDATE notes SET summary_checked = TRUE WHERE is_sensitive = FALSE`,
 			},
 		},
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"testing"
+
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // Postgres migration tests run against INODE_TEST_PG_DSN like the other
@@ -71,5 +73,37 @@ func TestPostgresMigrate_RefusesNewerSchema(t *testing.T) {
 	_, err := NewPostgresAdapter(ctx, os.Getenv("INODE_TEST_PG_DSN"), 4)
 	if !errors.Is(err, ErrSchemaTooNew) {
 		t.Fatalf("err = %v, want ErrSchemaTooNew", err)
+	}
+}
+
+func TestPostgres_UncheckedSensitiveAndSetSummary(t *testing.T) {
+	a := newPostgresTestAdapter(t)
+	ctx := context.Background()
+
+	// Simulate a note saved before summaries were validated.
+	if _, err := a.pool.Exec(ctx, `INSERT INTO notes (id, content_plain, summary, category, tags, is_sensitive, created_at, updated_at, summary_checked)
+		VALUES ('pg-legacy', '', 'leaky', 'credentials', '[]', TRUE, now(), now(), FALSE)`); err != nil {
+		t.Fatal(err)
+	}
+	// A note saved through the adapter is born checked.
+	if _, err := a.Save(ctx, &model.Note{Summary: "fine", Category: "notes", IsSensitive: true, Embedding: []float32{1, 0, 0, 0}}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.UncheckedSensitive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != "pg-legacy" {
+		t.Fatalf("UncheckedSensitive = %v, want only pg-legacy", got)
+	}
+	if err := a.SetSummary(ctx, "pg-legacy", "credentials (sensitive)"); err != nil {
+		t.Fatal(err)
+	}
+	if left, _ := a.UncheckedSensitive(ctx); len(left) != 0 {
+		t.Errorf("still unchecked: %v", left)
+	}
+	if err := a.SetSummary(ctx, "missing", "x"); err == nil {
+		t.Error("SetSummary on a missing note should fail")
 	}
 }

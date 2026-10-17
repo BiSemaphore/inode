@@ -49,3 +49,6 @@ coverage.html
 # Claude Code local artifacts
 .claude/worktrees/
 .claude/settings.local.json
+
+# Social (local-only: carousels are not published to the repo)
+social/

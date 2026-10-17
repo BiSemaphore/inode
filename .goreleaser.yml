@@ -37,10 +37,10 @@ checksum:
   algorithm: sha256
 
 # Release notes come from the CHANGELOG section for the tag
-# (scripts/release-notes.sh, passed as --release-notes by release.yml),
-# not from commit messages.
-changelog:
-  disable: true
+# (scripts/release-notes.sh, passed as --release-notes by release.yml).
+# Do not set `changelog.disable`: it also skips loading --release-notes,
+# which published v0.5.0 with an empty page. With --release-notes set,
+# goreleaser does not generate notes from commits.
 
 release:
   github:

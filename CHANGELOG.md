@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - inode no longer creates a new master secret when the OS keychain cannot be read. Previously any keychain error (locked keychain, denied prompt, unavailable service) made inode generate and store a new secret, which could overwrite the existing one and make every encrypted note unreadable. A new secret is now created only on a genuine first run; otherwise inode stops with an explanation and writes nothing. ([#104](https://github.com/BiSemaphore/inode/issues/104))
+- `SECURITY.md` now describes what the code actually protects and lists known limitations, including that cloud backends (`claude-api`, `openai`, `voyage`) receive note content in plaintext. Vulnerabilities are reported through GitHub private vulnerability reporting. ([#71](https://github.com/BiSemaphore/inode/issues/71))
 - Release binaries are built with Go 1.26 and `golang.org/x/text` v0.43.0, fixing reachable vulnerabilities in `crypto/tls`, `net/url` and other standard-library packages, and in `golang.org/x/text`. ([#98](https://github.com/BiSemaphore/inode/issues/98))
 
 ---

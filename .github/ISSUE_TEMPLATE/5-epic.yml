@@ -1,0 +1,66 @@
+name: Epic (maintainers)
+description: A body of work split into child issues. Usually opened by maintainers when planning a milestone.
+title: "Epic: "
+type: Epic
+labels: ["epic"]
+projects: ["BiSemaphore/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        After creating the epic, attach children as **sub-issues** and order them with **blocked by** links, then add the child table (wave, issue, size, blocked by, blocks). Reference example: #76. Writing guide: [docs/issue-guide.md](https://github.com/BiSemaphore/inode/blob/main/docs/issue-guide.md#epic)
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong or missing today, with evidence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: stories
+    attributes:
+      label: User stories
+      placeholder: |
+        1. As a ..., I want ..., so that ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals
+      description: Measurable outcomes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What this epic will not do, with the reason.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: In and out, naming the issue that covers each item.
+    validations:
+      required: true
+
+  - type: textarea
+    id: exit
+    attributes:
+      label: Exit criteria
+      description: Testable checklist for closing the epic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Risk, impact, mitigation.

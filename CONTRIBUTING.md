@@ -122,8 +122,9 @@ Rules:
 - **Phase is the milestone.** There are no phase labels.
 - **Security vulnerabilities are never reported in public issues.** See [Security](#security).
 
-Issue forms that enforce these sections, and a longer writing guide, are being
-added in [#68](https://github.com/BiSemaphore/inode/issues/68).
+Choosing **New issue** offers one form per type (Bug, Feature, Spike, Task, Epic),
+each asking for these sections and setting the issue type for you. The longer
+guide, with examples, is [`docs/issue-guide.md`](docs/issue-guide.md).
 
 ---
 

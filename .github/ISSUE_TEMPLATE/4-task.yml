@@ -1,0 +1,48 @@
+name: Task
+description: Refactor, documentation, tooling, CI or process work with no new user-facing capability.
+type: Task
+projects: ["BiSemaphore/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Writing guide: [docs/issue-guide.md](https://github.com/BiSemaphore/inode/blob/main/docs/issue-guide.md#task)
+        Dependencies (blocked by, parent epic) are added as GitHub links after the issue is created.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: The problem with evidence (files, commands, output), and why it matters now.
+    validations:
+      required: true
+
+  - type: textarea
+    id: in_scope
+    attributes:
+      label: In scope
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_scope
+    attributes:
+      label: Out of scope
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: A checklist someone else could verify.
+      placeholder: |
+        - [ ] ...
+        - [ ] PR links this issue; CHANGELOG updated or labeled skip-changelog
+    validations:
+      required: true
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related

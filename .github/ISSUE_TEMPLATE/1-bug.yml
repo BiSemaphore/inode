@@ -1,0 +1,129 @@
+name: Bug report
+description: Something in inode is broken or behaves differently than documented.
+title: "bug: "
+type: Bug
+labels: ["bug"]
+projects: ["BiSemaphore/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please fill in every required field; a bug we can reproduce gets fixed first.
+        **Security vulnerabilities do not belong here.** See the security policy linked on the previous screen.
+        Writing guide: [docs/issue-guide.md](https://github.com/BiSemaphore/inode/blob/main/docs/issue-guide.md#bug)
+
+  - type: input
+    id: version
+    attributes:
+      label: inode version
+      description: Output of `inode version`.
+      placeholder: "inode v0.5.0 (commit: 1a2b3c4, built: 2026-10-20T10:00:00Z)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (amd64)
+        - Linux (arm64)
+        - Windows
+        - Other (say which in Additional context)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: db_backend
+    attributes:
+      label: Database backend (`db.backend`)
+      options:
+        - sqlite (default)
+        - postgres
+    validations:
+      required: true
+
+  - type: dropdown
+    id: llm_backend
+    attributes:
+      label: LLM backend (`llm.backend`)
+      options:
+        - ollama (default)
+        - claude-api
+        - openai
+    validations:
+      required: true
+
+  - type: dropdown
+    id: embedding_backend
+    attributes:
+      label: Embedding backend (`embedding.backend`)
+      options:
+        - ollama (default)
+        - voyage
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands, starting from a state we can recreate. Replace real secrets with fake values.
+      placeholder: |
+        1. inode add "..." --sensitive
+        2. inode list
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened, and where that is documented if it is (README, help text, CHANGELOG).
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead. Paste full output and errors.
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "high: data loss, secret exposure, or a documented path does not work"
+        - "medium: wrong behavior with a workaround"
+        - "low: cosmetic or minor"
+    validations:
+      required: true
+
+  - type: textarea
+    id: root_cause
+    attributes:
+      label: Root cause (if known)
+      description: File and line if you found it, for example `internal/core/tagger.go:37`.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Config values (redact API keys and DSNs), logs, anything else.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through the security policy, not public issues).
+          required: true

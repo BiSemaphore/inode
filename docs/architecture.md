@@ -63,7 +63,7 @@ Backend details:
 | Backend | Talks to | Default model | Notes |
 |---|---|---|---|
 | LLM `ollama` | `<llm.base_url>/api/chat` | `llama3.2` | JSON output via `"format":"json"` |
-| LLM `claude-api` | Anthropic API (official Go SDK) | Claude Sonnet 4.5 when `llm.model` is empty | needs `llm.api_key` |
+| LLM `claude-api` | Anthropic API (official Go SDK) | `claude-sonnet-5-5` when `llm.model` is empty | needs `llm.api_key` |
 | LLM `openai` | `<base_url>/chat/completions`, plain `net/http` | `gpt-4o-mini` when `llm.model` is empty | JSON mode; base URL defaults to `https://api.openai.com/v1` only when empty (see #31) |
 | Embedding `ollama` | `<embedding.base_url>/api/embed` | `nomic-embed-text`, 768 dimensions | |
 | Embedding `voyage` | `https://api.voyageai.com/v1/embeddings` | `voyage-3`, 1024 dimensions | needs `embedding.api_key` |

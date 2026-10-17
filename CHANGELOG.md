@@ -17,9 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The README opens with a terminal recording of `inode add` and `inode get` instead of the old banner, and its first example now matches what the CLI prints. A social preview image for the repository is in `docs/assets/social-preview.png`. ([#110](https://github.com/BiSemaphore/inode/issues/110))
 - Databases now carry a schema version and are upgraded automatically when a new inode opens them. Before upgrading a SQLite database, inode writes a backup next to it (`notes.db.bak-v<from>-<timestamp>`). A database upgraded by a newer inode is refused instead of being opened. ([#85](https://github.com/BiSemaphore/inode/issues/85))
 - The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.4.0 remain installable under the old `github.com/shahid-io/inode` path.
+- Go 1.26 or newer is required to build or `go install` inode (was 1.25, which no longer receives security fixes). ([#98](https://github.com/BiSemaphore/inode/issues/98))
 
 ### Security
 - inode no longer creates a new master secret when the OS keychain cannot be read. Previously any keychain error (locked keychain, denied prompt, unavailable service) made inode generate and store a new secret, which could overwrite the existing one and make every encrypted note unreadable. A new secret is now created only on a genuine first run; otherwise inode stops with an explanation and writes nothing. ([#104](https://github.com/BiSemaphore/inode/issues/104))
+- Release binaries are built with Go 1.26 and `golang.org/x/text` v0.43.0, fixing reachable vulnerabilities in `crypto/tls`, `net/url` and other standard-library packages, and in `golang.org/x/text`. ([#98](https://github.com/BiSemaphore/inode/issues/98))
 
 ---
 

@@ -44,7 +44,7 @@ interactively.`,
 			Container:       c,
 			RevealSensitive: cfg.MCP.RevealSensitive,
 		}
-		s := mcp.NewServer(version.Version, h)
+		s := mcp.NewServer(version.Get().Version, h)
 		return mcp.Serve(s)
 	},
 }

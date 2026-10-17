@@ -232,8 +232,9 @@ version permanently. A mistake in a release is fixed by the next release.
 
 The module path is `github.com/BiSemaphore/inode`. Releases are built by
 [`.github/workflows/release.yml`](.github/workflows/release.yml) when a `v*`
-tag is pushed. A step-by-step `RELEASING.md` is being added in
-[#72](https://github.com/BiSemaphore/inode/issues/72).
+tag is pushed; the release page shows that version's CHANGELOG section
+(`scripts/release-notes.sh`). The step-by-step checklist is
+[`RELEASING.md`](RELEASING.md).
 
 ---
 

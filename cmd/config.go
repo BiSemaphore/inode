@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/BiSemaphore/inode/internal/config"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var configCmd = &cobra.Command{
@@ -41,25 +41,11 @@ Keys:
 			return fmt.Errorf("unknown config key %q", key)
 		}
 
-		home, err := os.UserHomeDir()
+		configDir, err := config.ConfigDir()
 		if err != nil {
 			return err
 		}
-		configDir := filepath.Join(home, ".inode")
-		if err := os.MkdirAll(configDir, 0700); err != nil {
-			return err
-		}
-
-		v := viper.New()
-		v.SetConfigName("config")
-		v.SetConfigType("toml")
-		v.AddConfigPath(configDir)
-		_ = v.ReadInConfig()
-
-		v.Set(key, value)
-
-		configPath := filepath.Join(configDir, "config.toml")
-		if err := v.WriteConfigAs(configPath); err != nil {
+		if err := config.Set(configDir, key, value); err != nil {
 			return fmt.Errorf("write config: %w", err)
 		}
 
@@ -76,8 +62,12 @@ var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "Print current configuration (API keys redacted)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// TODO(Phase 1): implement config show
-		// Print all config values; redact api_key fields
+		if dir, err := config.ConfigDir(); err == nil {
+			if mode, loose := config.LooseMode(dir); loose {
+				path := filepath.Join(dir, config.FileName)
+				fmt.Fprintf(os.Stderr, "warning: %s is readable by other users (mode %o); it can hold API keys. Fix: chmod 600 %s\n", path, mode, path)
+			}
+		}
 		fmt.Printf("LLM backend:         %s\n", cfg.LLM.Backend)
 		fmt.Printf("LLM model:           %s\n", cfg.LLM.Model)
 		fmt.Printf("LLM base URL:        %s\n", cfg.LLM.BaseURL)

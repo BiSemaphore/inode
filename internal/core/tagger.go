@@ -33,14 +33,17 @@ func (t *TaggerService) Classify(ctx context.Context, content string, opts Class
 	// If everything is provided by the user, skip the LLM call.
 	if opts.Category != "" && len(opts.Tags) > 0 && opts.IsSensitive != nil {
 		summary, err := t.llm.Summarize(ctx, content)
-		if err != nil {
+		if err != nil && !*opts.IsSensitive {
+			// The first line is a fine fallback for ordinary notes, but for a
+			// sensitive one it would usually be the secret itself.
 			summary = firstLine(content, 80)
 		}
+		category, tags := normalise(opts.Category), normaliseTags(opts.Tags)
 		return llm.ClassifyResult{
-			Category:    normalise(opts.Category),
-			Tags:        normaliseTags(opts.Tags),
+			Category:    category,
+			Tags:        tags,
 			IsSensitive: *opts.IsSensitive,
-			Summary:     summary,
+			Summary:     safeSummary(summary, content, category, tags, *opts.IsSensitive),
 		}, nil
 	}
 
@@ -72,6 +75,10 @@ func (t *TaggerService) Classify(ctx context.Context, content string, opts Class
 	if opts.IsSensitive != nil {
 		result.IsSensitive = *opts.IsSensitive
 	}
+
+	// Sensitive summaries are stored and shown in plaintext; never let one
+	// carry the secret (#53).
+	result.Summary = safeSummary(result.Summary, content, result.Category, result.Tags, result.IsSensitive)
 
 	return result, nil
 }

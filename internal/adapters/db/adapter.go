@@ -32,6 +32,13 @@ type Adapter interface {
 	// List returns notes matching filters, with pagination.
 	List(ctx context.Context, filters Filters, limit, offset int) ([]*model.Note, error)
 
+	// UncheckedSensitive returns sensitive notes whose summary has not yet
+	// been validated against their content (notes saved before v0.5.0).
+	UncheckedSensitive(ctx context.Context) ([]*model.Note, error)
+
+	// SetSummary replaces a note's summary by full ID and marks it validated.
+	SetSummary(ctx context.Context, id, summary string) error
+
 	// Close releases the database connection.
 	Close() error
 }

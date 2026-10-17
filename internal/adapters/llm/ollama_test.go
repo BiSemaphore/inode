@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 func newOllamaLLMWithMock(t *testing.T, h http.HandlerFunc) *OllamaAdapter {

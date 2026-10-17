@@ -14,9 +14,9 @@
 package mcp
 
 import (
+	"github.com/BiSemaphore/inode/internal/core"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/shahid-io/inode/internal/core"
 )
 
 // Handler owns the inode services the MCP tools delegate to.

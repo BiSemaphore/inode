@@ -7,11 +7,11 @@ import (
 
 type Note struct {
 	ID           string
-	UserID       string    // empty in Phase 1 (local, single-user)
-	ContentEnc   []byte    // iv[12] + gcm_sealed[N]; nil if not sensitive
-	ContentPlain string    // empty if sensitive
-	Summary      string    // LLM-generated one-liner
-	Category     string    // see Categories below — strict, validated via IsValidCategory
+	UserID       string // empty in Phase 1 (local, single-user)
+	ContentEnc   []byte // iv[12] + gcm_sealed[N]; nil if not sensitive
+	ContentPlain string // empty if sensitive
+	Summary      string // LLM-generated one-liner
+	Category     string // see Categories below — strict, validated via IsValidCategory
 	Tags         []string
 	IsSensitive  bool
 	Embedding    []float32 // voyage-3: 1024 dims

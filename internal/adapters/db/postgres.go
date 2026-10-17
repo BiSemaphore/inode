@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/BiSemaphore/inode/internal/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 	pgxvec "github.com/pgvector/pgvector-go/pgx"
-	"github.com/shahid-io/inode/internal/model"
 )
 
 // PostgresAdapter implements db.Adapter using PostgreSQL + pgvector.

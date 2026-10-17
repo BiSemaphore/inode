@@ -67,8 +67,13 @@ exist yet.
   sensitive notes) is sent to that provider to classify and embed it on
   `inode add`, and decrypted notes are sent to the LLM to answer `inode get`.
   Use the default Ollama backends if this is not acceptable.
-- **Summaries of sensitive notes are stored and shown in plaintext**, and can
-  contain the secret itself.
+- **Summaries of sensitive notes are stored and shown in plaintext.** A summary
+  that repeats a secret-looking token from the note (8 or more characters,
+  which also catches truncated copies) is replaced with
+  `<category> (sensitive): <tags>`, and summaries saved by earlier versions are
+  checked once on upgrade (`internal/core/summary.go`). The check looks for
+  copied tokens, so a summary can still say what a secret is for, for example
+  "Stripe test key".
   [#53](https://github.com/BiSemaphore/inode/issues/53)
 - **Embeddings are stored unencrypted** for every note, including sensitive
   ones. Embeddings do not store the text, but they encode its meaning and can

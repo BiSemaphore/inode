@@ -35,37 +35,11 @@ func NewSQLiteAdapter(path string, dimension int) (*SQLiteAdapter, error) {
 	}
 
 	a := &SQLiteAdapter{db: db, dimension: dimension}
-	if err := a.migrate(); err != nil {
+	if err := a.migrate(path); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
 	return a, nil
-}
-
-// migrate creates the notes table and the sqlite-vec virtual table.
-func (a *SQLiteAdapter) migrate() error {
-	_, err := a.db.Exec(`
-		CREATE TABLE IF NOT EXISTS notes (
-			id            TEXT PRIMARY KEY,
-			content_enc   BLOB,
-			content_plain TEXT,
-			summary       TEXT    NOT NULL DEFAULT '',
-			category      TEXT    NOT NULL DEFAULT 'notes',
-			tags          TEXT    NOT NULL DEFAULT '[]',
-			is_sensitive  INTEGER NOT NULL DEFAULT 1,
-			created_at    TEXT    NOT NULL,
-			updated_at    TEXT    NOT NULL
-		);`)
-	if err != nil {
-		return err
-	}
-
-	_, err = a.db.Exec(fmt.Sprintf(`
-		CREATE VIRTUAL TABLE IF NOT EXISTS note_embeddings USING vec0(
-			note_id   TEXT PRIMARY KEY,
-			embedding FLOAT[%d]
-		);`, a.dimension))
-	return err
 }
 
 // Save persists a note and its embedding. Returns the assigned UUID.

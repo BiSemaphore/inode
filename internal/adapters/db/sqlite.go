@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/BiSemaphore/inode/internal/model"
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/shahid-io/inode/internal/model"
 )
 
 func init() {

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BiSemaphore/inode/internal/adapters/db"
+	"github.com/BiSemaphore/inode/internal/core"
+	"github.com/BiSemaphore/inode/internal/model"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/shahid-io/inode/internal/adapters/db"
-	"github.com/shahid-io/inode/internal/core"
-	"github.com/shahid-io/inode/internal/model"
 )
 
 // maskedContent is what get_note returns in place of a sensitive note's

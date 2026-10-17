@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // newPostgresTestAdapter connects to a real Postgres+pgvector instance via

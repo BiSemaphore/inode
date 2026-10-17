@@ -3,7 +3,7 @@ package llm
 import (
 	"context"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // ClassifyResult is the structured output from LLM classification.

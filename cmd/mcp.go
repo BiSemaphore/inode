@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/shahid-io/inode/internal/mcp"
-	"github.com/shahid-io/inode/internal/version"
+	"github.com/BiSemaphore/inode/internal/mcp"
+	"github.com/BiSemaphore/inode/internal/version"
 	"github.com/spf13/cobra"
 )
 

@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // Filters for list and search queries.

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/BiSemaphore/inode/internal/model"
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
-	"github.com/shahid-io/inode/internal/model"
 )
 
 // ClaudeAdapter implements LLMAdapter using the Anthropic Claude API.

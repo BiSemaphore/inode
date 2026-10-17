@@ -3,7 +3,7 @@ package core
 import (
 	"testing"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // ── filterByDistance ────────────────────────────────────────────────────

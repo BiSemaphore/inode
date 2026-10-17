@@ -34,12 +34,12 @@ $ inode get "stripe test key"
 ### Build from source (recommended while we iterate)
 
 ```bash
-go install github.com/shahid-io/inode@latest
+go install github.com/BiSemaphore/inode@latest
 ```
 
 ### Releases
 
-Pre-built binaries for macOS / Linux / Windows are published on [GitHub Releases](https://github.com/shahid-io/inode/releases).
+Pre-built binaries for macOS / Linux / Windows are published on [GitHub Releases](https://github.com/BiSemaphore/inode/releases).
 
 ---
 

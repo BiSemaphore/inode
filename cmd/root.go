@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/shahid-io/inode/internal/config"
-	"github.com/shahid-io/inode/internal/core"
-	"github.com/shahid-io/inode/internal/version"
+	"github.com/BiSemaphore/inode/internal/config"
+	"github.com/BiSemaphore/inode/internal/core"
+	"github.com/BiSemaphore/inode/internal/version"
 	"github.com/spf13/cobra"
 )
 

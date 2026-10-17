@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/shahid-io/inode/internal/adapters/db"
-	"github.com/shahid-io/inode/internal/adapters/embedding"
-	"github.com/shahid-io/inode/internal/adapters/llm"
-	"github.com/shahid-io/inode/internal/config"
+	"github.com/BiSemaphore/inode/internal/adapters/db"
+	"github.com/BiSemaphore/inode/internal/adapters/embedding"
+	"github.com/BiSemaphore/inode/internal/adapters/llm"
+	"github.com/BiSemaphore/inode/internal/config"
 )
 
 // Container holds all initialised services and adapters.

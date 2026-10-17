@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/BiSemaphore/inode/internal/cli"
+	"github.com/BiSemaphore/inode/internal/core"
+	"github.com/BiSemaphore/inode/internal/model"
 	"github.com/fatih/color"
-	"github.com/shahid-io/inode/internal/cli"
-	"github.com/shahid-io/inode/internal/core"
-	"github.com/shahid-io/inode/internal/model"
 	"github.com/spf13/cobra"
 )
 

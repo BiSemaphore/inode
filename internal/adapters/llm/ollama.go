@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shahid-io/inode/internal/model"
+	"github.com/BiSemaphore/inode/internal/model"
 )
 
 // OllamaAdapter implements LLMAdapter using a local Ollama server.

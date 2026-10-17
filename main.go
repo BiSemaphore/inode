@@ -1,6 +1,6 @@
 package main
 
-import "github.com/shahid-io/inode/cmd"
+import "github.com/BiSemaphore/inode/cmd"
 
 func main() {
 	cmd.Execute()

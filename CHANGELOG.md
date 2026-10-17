@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Databases now carry a schema version and are upgraded automatically when a new inode opens them. Before upgrading a SQLite database, inode writes a backup next to it (`notes.db.bak-v<from>-<timestamp>`). A database upgraded by a newer inode is refused instead of being opened. ([#85](https://github.com/BiSemaphore/inode/issues/85))
 - The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.3.0 remain installable under the old `github.com/shahid-io/inode` path.
 
+### Security
+- inode no longer creates a new master secret when the OS keychain cannot be read. Previously any keychain error (locked keychain, denied prompt, unavailable service) made inode generate and store a new secret, which could overwrite the existing one and make every encrypted note unreadable. A new secret is now created only on a genuine first run; otherwise inode stops with an explanation and writes nothing. ([#104](https://github.com/BiSemaphore/inode/issues/104))
+
 ---
 
 ## [0.3.0] - 2026-05-13

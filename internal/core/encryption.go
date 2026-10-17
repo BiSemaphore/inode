@@ -63,25 +63,58 @@ func (km *KeyManager) DeriveKey() ([]byte, error) {
 	return argon2.IDKey(secret, km.salt, argonTime, argonMemory, argonThreads, argonKeyLen), nil
 }
 
-// ensureSecret creates and stores a master secret if one doesn't exist.
+// ensureSecret makes sure a master secret exists, creating one only on a
+// genuine first run.
+//
+// Creating a secret when one already exists makes every encrypted note
+// unreadable, so a new secret is generated only when this config dir has
+// never been initialised: no .salt (written right after the first secret)
+// and no .key fallback file. Any other keychain failure (locked keychain,
+// denied access prompt, unavailable service, a HOME the OS keychain cannot
+// resolve) stops with an error and writes nothing.
 func (km *KeyManager) ensureSecret() error {
-	_, err := keyring.Get(keyringService, keyringUser)
-	if err == nil {
-		return nil // already exists
+	_, getErr := keyring.Get(keyringService, keyringUser)
+	if getErr == nil {
+		return nil
 	}
 
-	// Generate new 32-byte secret
+	// Headless setups keep the secret in the fallback key file.
+	if fileExists(km.keyFilePath()) {
+		return nil
+	}
+
+	if fileExists(filepath.Join(km.configDir, ".salt")) {
+		return fmt.Errorf("master secret not readable from the OS keychain (%w), but %s was initialised before; "+
+			"refusing to create a new secret because it would make existing encrypted notes unreadable. "+
+			"Unlock the keychain or restore the %q item and retry", getErr, km.configDir, keyringUser)
+	}
+
+	// First run: generate a new 32-byte secret.
 	secret := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
 		return err
 	}
 	encoded := base64.StdEncoding.EncodeToString(secret)
 
+	if !errors.Is(getErr, keyring.ErrNotFound) {
+		// The keychain is unreachable (headless Linux, WSL). Use the key file
+		// directly; never write to a keychain we could not read.
+		return km.writeKeyFile(encoded)
+	}
 	if err := keyring.Set(keyringService, keyringUser, encoded); err != nil {
-		// Keyring unavailable (headless Linux/WSL) — fall back to key file
+		// Keyring present but refused the write: fall back to the key file.
 		return km.writeKeyFile(encoded)
 	}
 	return nil
+}
+
+func fileExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.Mode().IsRegular()
+}
+
+func (km *KeyManager) keyFilePath() string {
+	return filepath.Join(km.configDir, ".key")
 }
 
 // loadSecret retrieves the master secret from keyring or fallback key file.
@@ -121,14 +154,13 @@ func (km *KeyManager) loadOrCreateSalt() ([]byte, error) {
 }
 
 func (km *KeyManager) writeKeyFile(encoded string) error {
-	path := filepath.Join(km.configDir, ".key")
+	path := km.keyFilePath()
 	fmt.Fprintf(os.Stderr, "warning: keyring unavailable, storing key in %s (chmod 600)\n", path)
 	return os.WriteFile(path, []byte(encoded), 0600)
 }
 
 func (km *KeyManager) readKeyFile() (string, error) {
-	path := filepath.Join(km.configDir, ".key")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(km.keyFilePath())
 	if err != nil {
 		return "", err
 	}

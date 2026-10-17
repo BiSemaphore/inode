@@ -46,9 +46,13 @@ coverage.html
 # goreleaser
 .goreleaser-local.yml
 
-# Claude Code local artifacts
-.claude/worktrees/
-.claude/settings.local.json
+# Assistant tooling (local only)
+.claude/
+docs/CLAUDE.md
 
 # Social (local-only: carousels are not published to the repo)
 social/
+
+# Local-only agent configs
+.agents/
+.codex/

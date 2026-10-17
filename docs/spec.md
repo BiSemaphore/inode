@@ -1,361 +1,126 @@
-# inode — Product Specification
+# inode product spec
 
-> A developer-first, AI-powered personal knowledge base and secret vault.
-> Save anything once. Find it later with natural language.
+What inode is, who it is for, and what it does and does not do, as of v0.5.0.
+How it is built is in [architecture.md](architecture.md).
 
----
+## What it is
 
-## 1. What is inode?
+A knowledge base you use from the terminal. You save anything in one line (a
+note, a command, a decision, an API key) and later ask for it in plain
+English. inode classifies and tags what you save, encrypts what is sensitive,
+and answers questions from your notes with the notes it used listed as
+sources.
 
-inode is a CLI-first tool for storing notes, secrets, keys, commands, and decisions — and
-retrieving them later using natural language instead of folder hierarchies or keyword search.
+It runs on your machine by default: Ollama for the language model and
+embeddings, SQLite for storage, no account and no network service. Cloud
+backends and Postgres are opt-in.
 
-**Core promise:** You saved it once. You never need to remember where. Just ask.
+## Who it is for
 
-**Primary user:** Individual developers, personal productivity.
-**Future scope:** Teams and organizations.
+Developers who keep reusable knowledge scattered across shell history, chat
+threads, notes apps and `.env` files, and who would rather ask than search.
+Today inode is single-user: one person, one knowledge base. Sharing with a
+team is the next phase (see [What's next](#whats-next)).
 
----
+## Problems it solves
 
-## 2. Problems It Solves
-
-| Scenario | Without inode | With inode |
+| You want | Without inode | With inode |
 |---|---|---|
-| Find a GitHub PAT saved 3 months ago | Scroll Notion, notes app, emails | `inode ask "github personal access token"` |
-| Recall a complex bash command | CTRL+R, grep history, search docs | `inode ask "docker cleanup command"` |  
-| Find an API key for a rarely-used service | Check 5 different places | `inode ask "stripe test key"` |
-| Get context on a past decision | Read through meeting notes | `inode ask "why did we choose postgres"` |
+| The command you ran three weeks ago | `Ctrl+R`, grep history, search the docs again | `inode get "rotate staging db creds"` |
+| An API key for a service you rarely use | Check five places | `inode get "stripe test key"` |
+| Why a decision was made | Read old threads | `inode get "why did we pick NATS"` |
+| A runbook step during an incident | Find the wiki page | `inode get "rollback the api deploy"` |
 
----
+## Features (shipped)
 
-## 3. Feature Set
-
-### Phase 1 — Local MVP
-
-- [ ] `inode add` — save a note (text, secret, snippet, command, anything)
-- [ ] `inode ask` — natural language search using RAG over saved notes
-- [ ] `inode list` — list notes with filters (category, tag, sensitive)
-- [ ] `inode config` — manage local config (LLM backend, API keys, defaults)
-- [ ] Auto-tagging and auto-categorization via Claude API
-- [ ] Sensitive note flagging (`--sensitive` / `--no-sensitive` flags)
-- [ ] Sensitive value masking in output; `--reveal` flag to show full value
-- [ ] AES-256-GCM encryption at rest for sensitive note content
-- [ ] Semantic embeddings via Voyage AI for natural language search
-
-### Phase 2 — Multi-user + Cloud
-
-- [ ] Go + chi HTTP server with REST API
-- [ ] PostgreSQL + pgvector (replaces SQLite + sqlite-vec)
-- [ ] User accounts, JWT auth, refresh tokens
-- [ ] Browser-based login flow (`inode login`)
-- [ ] Per-device session tokens, revocable from dashboard
-
-### Phase 3 — LLM Swappability
-
-- [ ] Ollama integration (local LLM, no API cost, offline)
-- [ ] Config-driven backend switching
-- [ ] LLM adapter pattern validated across Claude + Ollama
-
-### Phase 4 — Hardening
-
-- [ ] Rate limiting
-- [ ] 2FA (TOTP — Google Authenticator)
-- [ ] CLI shell autocomplete
-- [ ] Audit log for sensitive value reveals
-
-### Phase 5 — Scale and Ecosystem
-
-- [ ] Web dashboard (Next.js)
-- [ ] Bulk import (Notion, markdown files)
-- [ ] Note sharing between users
-- [ ] Team and org workspaces
-- [ ] MCP server — expose inode as a Claude Desktop tool
-- [ ] Scheduled reminders
-
----
-
-## 4. Data Model
-
-### Note
-
-```
-id:            UUID
-user_id:       UUID (FK → users; null in Phase 1 local mode)
-content_enc:   BLOB   (AES-256-GCM encrypted; stores ciphertext + IV + auth tag)
-content_plain: TEXT   (null when is_sensitive=true, plaintext otherwise)
-summary:       TEXT   (LLM-generated one-liner for list display)
-category:      STRING ("credentials" | "commands" | "decisions" | "references" | "notes")
-tags:          JSON   (array of strings, e.g. ["github", "token", "personal"])
-is_sensitive:  BOOLEAN
-embedding:     BLOB   (serialized float32 array; 1024 dims for voyage-3)
-created_at:    TIMESTAMP
-updated_at:    TIMESTAMP
-```
-
-### User (Phase 2+)
-
-```
-id:            UUID
-email:         STRING (unique)
-username:      STRING (unique)
-password_hash: STRING (Argon2id)
-created_at:    TIMESTAMP
-last_login:    TIMESTAMP
-```
-
-### Config (Phase 2+, server-side per user)
-
-```
-user_id:               UUID
-llm_backend:           ENUM ("claude-api" | "ollama" | "openai")
-llm_model:             STRING
-api_key_enc:           STRING (encrypted)
-embedding_backend:     ENUM ("voyage" | "local")
-default_sensitive:     BOOLEAN
-predefined_tags:       JSON array
-predefined_categories: JSON array
-```
-
----
-
-## 5. Predefined Categories
-
-```json
-[
-  { "name": "credentials", "description": "API keys, tokens, passwords, secrets, access keys" },
-  { "name": "commands",    "description": "CLI commands, bash scripts, terminal shortcuts" },
-  { "name": "decisions",   "description": "Architectural decisions, tech choices, meeting outcomes" },
-  { "name": "references",  "description": "URLs, documentation links, resource pointers" },
-  { "name": "notes",       "description": "General notes, todos, reminders, ideas" }
-]
-```
-
-The LLM can suggest new categories when no predefined one fits. Custom categories persist
-to config and are included in future classification prompts.
-
----
-
-## 6. Auto-Tagging and Categorization
-
-When a note is added without explicit tags or category, inode sends the content to Claude
-with the predefined category list and tag suggestions. Claude returns structured JSON:
-
-```json
-{
-  "category": "credentials",
-  "tags": ["stripe", "payment", "test"],
-  "is_sensitive": true,
-  "summary": "Stripe test secret key"
-}
-```
-
-When the user specifies tags or category manually, they are validated against the predefined
-list. Custom values that don't match are passed to Claude for fuzzy reconciliation — Claude
-maps them to the nearest predefined option or confirms a new one.
-
----
-
-## 7. CLI Reference
-
-### Authentication (Phase 2+)
-
-```bash
-inode login       # Opens browser for OAuth or prompts email/password
-inode logout
-inode whoami
-```
-
-### Adding Notes
-
-```bash
-inode add "My GitHub PAT is ghp_xxx"
-inode add "docker system prune -a" --category commands --tags docker,cleanup
-inode add --sensitive "AWS_SECRET=xxxx"    # force sensitive
-inode add --no-sensitive "Just a tip"      # force not sensitive
-inode add                                   # opens $EDITOR (like git commit)
-```
-
-### Searching
-
-```bash
-inode ask "what is my github token"
-inode ask "show me docker cleanup commands"
-inode ask "any AWS credentials I saved"
-inode ask "stripe test key" --reveal       # unmask sensitive values
-```
-
-### Listing
-
-```bash
-inode list                          # all notes, sensitive values masked
-inode list --category credentials
-inode list --tag github
-inode list --sensitive              # requires confirmation prompt
-```
-
-### Note Management
-
-```bash
-inode note get <id>
-inode note edit <id>
-inode note delete <id>
-```
-
-### Config
-
-```bash
-inode config set llm.backend claude-api
-inode config set llm.model claude-sonnet-4-6
-inode config set llm.api_key sk-ant-xxxx
-inode config set embedding.backend voyage
-inode config set embedding.api_key pa-xxxx
-inode config set defaults.sensitive true
-inode config show
-```
-
----
-
-## 8. Example Session
-
-```bash
-$ inode add "My Stripe test secret key is sk_test_xxxxx"
-  Auto-detected: category=credentials, tags=[stripe, payment, test]
-  Flagged as: sensitive=true
-  Saved as note #47
-
-$ inode ask "stripe test key"
-  Note #47 — "Stripe test secret key" [credentials] [stripe, payment, test]
-  Value: sk_test_****** (use --reveal to show)
-  Saved: 2 days ago
-
-$ inode ask "stripe test key" --reveal
-  Reveal sensitive value? [y/N]: y
-  sk_test_xxxxx
-
-$ inode list --category credentials
-  #47  Stripe test secret key     [stripe, payment, test]   2 days ago   ••••••
-  #31  GitHub personal token      [github, token]           3 weeks ago  ••••••
-  #12  AWS production access key  [aws, prod]               1 month ago  ••••••
-```
-
----
-
-## 9. Security Model
-
-| Layer | Implementation |
+| Feature | Since |
 |---|---|
-| Sensitive content at rest | AES-256-GCM; key derived via Argon2id, stored in OS keychain |
-| Reveal flow | Explicit `--reveal` flag + confirmation prompt required |
-| Embeddings | Semantic-only vectors; raw content cannot be reconstructed from them |
-| Config API keys | Encrypted with same keychain-derived key |
-| Phase 2: passwords | Argon2id hashing (no bcrypt — Argon2id is stronger) |
-| Phase 2: sessions | JWT (1h expiry) + refresh tokens (30d), per-device, revocable |
-| Phase 2: transport | HTTPS only |
-| Phase 2: 2FA | TOTP (Google Authenticator / Authy) |
+| `add`, `list`, `note get/delete`, `config`, and search as `ask` | v0.1.0 |
+| Search renamed to `get`, with `ask` kept as an alias | v0.2.0 |
+| Automatic category, tags, sensitivity and one-line summary | v0.1.0 |
+| AES-256-GCM encryption for sensitive notes, master secret in the OS keychain | v0.1.0 |
+| Local default: Ollama (LLM and embeddings) and SQLite with sqlite-vec | v0.1.0 |
+| Postgres with pgvector as an alternative store | v0.3.0 |
+| MCP server (`inode mcp`), read-only, for Claude Code, Cursor and other MCP clients | v0.4.0 |
+| OpenAI LLM backend | v0.5.0 |
+| Versioned schema migrations with an automatic backup | v0.5.0 |
+| Secrets kept out of summaries; an existing master secret is never replaced | v0.5.0 |
 
-### Encryption Key Derivation
+## Commands
 
-```
-secret = OS keychain secret (random 32 bytes, generated on first run)
-salt   = fixed per-install salt (stored in ~/.inode/config.toml)
-key    = Argon2id(secret, salt, len=32)
+| Command | Does |
+|---|---|
+| `inode add "<text>"` | Save a note. Flags: `--category`, `--tags a,b`, `--sensitive`, `--no-sensitive` |
+| `inode get "<question>"` | Answer from your notes, with sources. Aliases: `ask`, `find`, `search`. Flag: `--reveal` (asks first) |
+| `inode list` | List notes. Flags: `--category`, `--tag`, `--limit` (default 20), `--sensitive` (asks first) |
+| `inode note get <id>` | Show one note; asks before revealing sensitive content |
+| `inode note delete <id>` | Delete one note |
+| `inode config set <key> <value>`, `inode config show` | Change or print settings (API keys redacted in `show`) |
+| `inode mcp` | Run the MCP server over stdio |
+| `inode version` | Print the version |
 
-Per note:
-  iv         = random 12 bytes (new per note)
-  ciphertext, auth_tag = AES_256_GCM(key, iv, plaintext)
+IDs can be shortened to a prefix; the CLI prints the first 8 characters.
 
-Stored in DB: { ciphertext, iv, auth_tag }
-```
+## Categories
 
----
+The language model must pick one of these; anything else becomes `notes`
+(`internal/model/note.go`).
 
-## 10. Local Config File
+| Category | For |
+|---|---|
+| `credentials` | API keys, tokens, passwords, secrets |
+| `commands` | CLI commands and one-liners you reuse |
+| `snippets` | Code, config, queries, small reusable text |
+| `decisions` | Technical and process decisions, with the reasoning |
+| `runbooks` | Multi-step procedures, deploy and incident playbooks |
+| `learnings` | Gotchas, debugging insights, lessons from incidents |
+| `references` | URLs, docs, dashboards |
+| `contacts` | People, emails, handles, on-call rotations |
+| `notes` | Everything else |
 
-Stored at `~/.inode/config.toml` (file permissions: 600).
+## Sensitive notes
 
-```toml
-[llm]
-backend     = "claude-api"
-model       = "claude-sonnet-4-6"
-api_key_enc = "enc:base64encodedciphertext..."   # AES-256-GCM encrypted
+Notes are sensitive by default (`defaults.sensitive = true`); `--no-sensitive`
+or the config turns that off. A sensitive note's content is encrypted at rest
+and masked in every output until you confirm a reveal. Its summary, category,
+tags and embedding are not encrypted. The summary is checked so it never
+repeats a secret. With a cloud backend, content is sent to that provider to be
+classified, embedded and answered. Details: [architecture.md](architecture.md)
+sections 6 and 7, and [SECURITY.md](../SECURITY.md).
 
-[embedding]
-backend     = "voyage"
-model       = "voyage-3"
-api_key_enc = "enc:base64encodedciphertext..."
+## Backends
 
-[db]
-path = "~/.inode/notes.db"   # Phase 1 (SQLite + sqlite-vec)
-# url = "postgresql://..."   # Phase 2
-
-[security]
-salt = "base64randomsalt..."  # generated on first run, never changes
-
-[defaults]
-sensitive = true              # new notes flagged sensitive by default
-```
-
----
-
-## 11. Tech Stack
-
-### Phase 1 — Local MVP
-
-| Layer | Choice | Reason |
+| Role | Default (runs on your machine, free) | Optional |
 |---|---|---|
-| Language | Go | Single binary, cross-platform (Windows/Mac/Linux), zero runtime dependency |
-| CLI framework | Cobra | Industry standard Go CLI framework (used by kubectl, gh, docker) |
-| Terminal output | Lipgloss + Bubbles | Rich styling, tables, spinners — Charm ecosystem |
-| LLM | `anthropic-sdk-go` (official) | Anthropic-maintained Go SDK |
-| Embeddings | Voyage AI — `voyage-3` | Anthropic's recommended embedding partner; custom HTTP client (~50 lines) |
-| Vector search | SQLite + `sqlite-vec-go-bindings` | Zero infra; cosine similarity on a laptop |
-| Encryption | Go stdlib `crypto/aes` + `crypto/cipher` | AES-256-GCM, no third-party lib needed |
-| Key storage | `go-keyring` | macOS Keychain, Linux Secret Service, Windows Credential Locker |
-| Config | `BurntSushi/toml` | TOML parsing for `~/.inode/config.toml` |
+| Language model | Ollama, `llama3.2` | Anthropic Claude (`claude-api`), OpenAI (`openai`) |
+| Embeddings | Ollama, `nomic-embed-text` | Voyage AI (`voyage`) |
+| Storage | SQLite + sqlite-vec, `~/.inode/notes.db` | Postgres + pgvector (`db.backend = postgres`) |
 
-### Phase 2+ — Cloud
+## Platforms
 
-| Layer | Choice |
-|---|---|
-| API Server | Go + `chi` router (same language, no context switch) |
-| Database | PostgreSQL + pgvector |
-| Auth | JWT (`golang-jwt/jwt`) + Argon2id (`golang.org/x/crypto/argon2`) |
-| Hosting | Railway or Fly.io |
-| Frontend | Next.js |
+Release archives are built for linux/amd64. On macOS, Windows and other
+architectures, `go install github.com/BiSemaphore/inode@latest` works where CGO
+and a C compiler are available (the SQLite backend needs them). More release
+targets are tracked in #33.
 
-### Distribution
+## Not goals
 
-| Platform | Method |
-|---|---|
-| macOS | `brew install inode` or download binary |
-| Linux | Download binary or `apt`/`yum` package |
-| Windows | `winget install inode` or download `.exe` |
-| All | GitHub Releases (cross-compiled from Mac via `goreleaser`) |
+- **A hosted service.** inode runs on your machine, or on a server you run.
+  There is no inode cloud and no paid tier.
+- **Sync between devices.** Several machines can point at one Postgres
+  database, but sensitive notes are encrypted with the master secret of the
+  machine that saved them, so they only open there.
+- **A replacement for a team secrets manager** such as Vault. inode keeps your
+  own working knowledge, secrets included, close at hand; it does not issue,
+  rotate or audit credentials.
+- **Editing notes in place.** Delete and add again.
+- **Full-text or keyword search.** Retrieval is semantic, by meaning.
 
----
+## What's next
 
-## 12. Development Phases
-
-### Phase 1 — Local MVP (target: 1–2 weeks)
-
-Build `inode add`, `inode ask`, `inode list`, `inode config`. Everything runs locally.
-SQLite + sqlite-vec. Claude API + Voyage AI. AES-256-GCM for sensitive notes.
-No server, no auth, single user.
-
-### Phase 2 — Multi-user + Cloud (target: 2–3 weeks)
-
-Introduce Go + chi HTTP server, PostgreSQL + pgvector, JWT auth, and the `inode login` flow.
-The CLI switches from calling local services to HTTP. Core business logic is unchanged.
-
-### Phase 3 — LLM Swappability (target: 1 week)
-
-Ollama integration behind the existing LLM adapter. Config-driven switching.
-Validate that all LLM operations work identically across Claude and Ollama.
-
-### Phase 4 — Hardening (ongoing)
-
-Rate limiting, 2FA, audit logging for sensitive reveals, CLI autocomplete.
-
-### Phase 5 — Scale and Ecosystem
-
-Web dashboard, MCP server, team workspaces, bulk import, scheduled reminders.
+Teams and organizations: notes shared like files, with an owner, a team and a
+mode (`chmod 640`), a self-hosted server, search that only sees what you may
+read, and agents that search as the person running them. The design is being
+worked out in public in #35 and the spikes linked from it, and the order of work
+is on the [board](https://github.com/orgs/BiSemaphore/projects/1) under the
+Phase milestones. This document will describe it once it ships.

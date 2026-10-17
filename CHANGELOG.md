@@ -7,18 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- OpenAI LLM backend, opt-in via `llm.backend = openai`. Plain `net/http` against the Chat Completions API (no SDK dependency), JSON mode for classification and answers. Defaults to `gpt-4o-mini`; `llm.base_url` targets Azure OpenAI or any compatible endpoint. Ollama stays the default.
+## [0.5.0] - 2026-10-18
 
-### Fixed
-- `inode version` reports the real version for `go install` builds (for example `v0.5.0`) instead of `dev`, and the commit and time for builds from a git checkout; the MCP server reports the same version to clients. Release archives are unchanged. ([#32](https://github.com/BiSemaphore/inode/issues/32))
-- Summaries of sensitive notes no longer expose the secret. They were stored and shown in plaintext in `inode list`, `inode get` sources, `inode note get` and MCP; when the LLM was unavailable the summary was the first 80 characters of the secret itself. New summaries are checked against the note and replaced with a neutral `<category> (sensitive): <tags>` when they contain secret-looking values; summaries stored by earlier versions are checked once on first run and fixed the same way. MCP `list_notes` now leaves out sensitive notes unless `mcp.reveal_sensitive` is set, and `get_note` no longer returns their summary. ([#53](https://github.com/BiSemaphore/inode/issues/53))
+### Added
+- OpenAI LLM backend, opt-in via `llm.backend = openai`. Plain `net/http` against the Chat Completions API (no SDK dependency), JSON mode for classification and answers. Defaults to `gpt-4o-mini`; `llm.base_url` targets Azure OpenAI or any compatible endpoint. Ollama stays the default. Until [#31](https://github.com/BiSemaphore/inode/issues/31) is fixed, also set `llm.model` and `llm.base_url` (for example `https://api.openai.com/v1`), otherwise the Ollama defaults are used.
 
 ### Changed
 - The README opens with a terminal recording of `inode add` and `inode get` instead of the old banner, and its first example now matches what the CLI prints. A social preview image for the repository is in `docs/assets/social-preview.png`. ([#110](https://github.com/BiSemaphore/inode/issues/110))
 - Databases now carry a schema version and are upgraded automatically when a new inode opens them. Before upgrading a SQLite database, inode writes a backup next to it (`notes.db.bak-v<from>-<timestamp>`). A database upgraded by a newer inode is refused instead of being opened. ([#85](https://github.com/BiSemaphore/inode/issues/85))
 - The repository moved to the BiSemaphore organization. The Go module path is now `github.com/BiSemaphore/inode`: install with `go install github.com/BiSemaphore/inode@latest`. Versions up to v0.4.0 remain installable under the old `github.com/shahid-io/inode` path.
 - Go 1.26 or newer is required to build or `go install` inode (was 1.25, which no longer receives security fixes). ([#98](https://github.com/BiSemaphore/inode/issues/98))
+
+### Fixed
+- `inode version` reports the real version for `go install` builds (for example `v0.5.0`) instead of `dev`, and the commit and time for builds from a git checkout; the MCP server reports the same version to clients. Release archives are unchanged. ([#32](https://github.com/BiSemaphore/inode/issues/32))
+- Summaries of sensitive notes no longer expose the secret. They were stored and shown in plaintext in `inode list`, `inode get` sources, `inode note get` and MCP; when the LLM was unavailable the summary was the first 80 characters of the secret itself. New summaries are checked against the note and replaced with a neutral `<category> (sensitive): <tags>` when they contain secret-looking values; summaries stored by earlier versions are checked once on first run and fixed the same way. MCP `list_notes` now leaves out sensitive notes unless `mcp.reveal_sensitive` is set, and `get_note` no longer returns their summary. ([#53](https://github.com/BiSemaphore/inode/issues/53))
 
 ### Security
 - inode no longer creates a new master secret when the OS keychain cannot be read. Previously any keychain error (locked keychain, denied prompt, unavailable service) made inode generate and store a new secret, which could overwrite the existing one and make every encrypted note unreadable. A new secret is now created only on a genuine first run; otherwise inode stops with an explanation and writes nothing. ([#104](https://github.com/BiSemaphore/inode/issues/104))
@@ -99,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite + sqlite-vec for local vector similarity search
 - Docker Compose setup for Ollama
 
-[Unreleased]: https://github.com/BiSemaphore/inode/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/BiSemaphore/inode/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/BiSemaphore/inode/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/BiSemaphore/inode/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/BiSemaphore/inode/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/BiSemaphore/inode/compare/v0.2.0...v0.2.1

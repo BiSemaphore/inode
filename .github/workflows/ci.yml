@@ -102,3 +102,23 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
+
+  govulncheck:
+    name: Vulnerability check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+
+      # Reports only vulnerabilities in code paths inode actually calls.
+      # CGO is needed so the SQLite adapter (sqlite-vec cgo bindings) is analysed.
+      - name: govulncheck
+        env:
+          CGO_ENABLED: 1
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...

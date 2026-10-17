@@ -27,7 +27,7 @@ that is a bug; please open an issue.
 
 ### Prerequisites
 
-- **Go 1.25 or newer** (`go.mod` declares `go 1.25.5`).
+- **Go 1.26 or newer** (`go.mod` declares `go 1.26.0`; Go supports only its two newest releases, see #98).
 - **A C compiler**, because the default storage backend (SQLite + sqlite-vec) uses CGO:
   - macOS: Xcode Command Line Tools (`xcode-select --install`)
   - Linux: `gcc` (for example `sudo apt-get install gcc`)

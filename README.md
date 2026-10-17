@@ -1,19 +1,20 @@
 <div align="center">
-  <img src="docs/banner.svg" alt="inode — a personal knowledge base that runs on your laptop" width="100%">
+  <img src="docs/assets/demo.gif" alt="Terminal recording: inode add saves a note about rotating staging database credentials and marks it sensitive; inode get answers a plain-English question and lists the note as its source" width="100%">
 </div>
 
 <br/>
 
 **inode** is a CLI tool for storing notes, secrets, API keys, commands, and decisions — retrieved via vector similarity search and LLM inference instead of grep, folders, or memory. It runs entirely on your machine; the default backends are local (Ollama for both LLM and embeddings, SQLite for storage).
 
-```bash
-$ inode add "My Stripe test key is sk_test_xxxxx"
-  ✓ category=credentials  tags=[stripe, payment, test]  sensitive=true
-  ✓ Saved
+```console
+$ inode add "staging DB creds: vault write database/rotate-root/staging"
+  category=runbooks  tags=[vault, postgres, staging]  sensitive=true
+  saved  id=a1b2c3d4
+$ inode get "how do I rotate staging db creds"
+Run vault write database/rotate-root/staging, then restart the api.
 
-$ inode get "stripe test key"
-  Note — "Stripe test secret key" [credentials]
-  Value: sk_test_******  (use --reveal to show)
+── Sources (1 note(s)) ──
+  #a1b2c3d4  Rotate staging DB creds  [runbooks] [vault, postgres, staging]  [sensitive]
 ```
 
 ---

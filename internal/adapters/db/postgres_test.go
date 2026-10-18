@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/BiSemaphore/inode/internal/model"
@@ -69,41 +71,63 @@ func TestPostgres_SaveAndGet_FullID(t *testing.T) {
 	}
 }
 
-func TestPostgres_GetByShortPrefix(t *testing.T) {
+func TestPostgres_MatchIDs(t *testing.T) {
+	// Regression for #90: Get and Delete used LIKE prefix% LIMIT 1, so an
+	// ambiguous prefix picked one note arbitrarily and "" or "%" matched any.
 	a := newPostgresTestAdapter(t)
 	ctx := context.Background()
 
-	id, err := a.Save(ctx, &model.Note{
-		ContentPlain: "x",
-		Summary:      "n",
-		Category:     "notes",
-		Embedding:    []float32{0.1, 0.2, 0.3, 0.4},
-	})
+	for _, id := range []string{"3f1a0000-aaaa", "3b770000-bbbb", "c0de0000-cccc", "a_b%0000-dddd"} {
+		if _, err := a.Save(ctx, &model.Note{ID: id, Summary: id, Category: "notes", Embedding: []float32{1, 0, 0, 0}}); err != nil {
+			t.Fatalf("Save %s: %v", id, err)
+		}
+	}
+
+	tests := []struct {
+		prefix string
+		limit  int
+		want   []string
+	}{
+		{"3", 10, []string{"3b770000-bbbb", "3f1a0000-aaaa"}},
+		{"3", 1, []string{"3b770000-bbbb"}},
+		{"3f1a", 10, []string{"3f1a0000-aaaa"}},
+		{"c0de0000-cccc", 10, []string{"c0de0000-cccc"}},
+		{"%", 10, nil},
+		{"a%", 10, nil},
+		{"a_b%", 10, []string{"a_b%0000-dddd"}},
+		{"ffff", 10, nil},
+	}
+	for _, tt := range tests {
+		got, err := a.MatchIDs(ctx, tt.prefix, tt.limit)
+		if err != nil {
+			t.Fatalf("MatchIDs(%q): %v", tt.prefix, err)
+		}
+		if strings.Join(got, ",") != strings.Join(tt.want, ",") {
+			t.Errorf("MatchIDs(%q, %d) = %v, want %v", tt.prefix, tt.limit, got, tt.want)
+		}
+	}
+}
+
+func TestPostgres_GetAndDeleteNeedFullID(t *testing.T) {
+	a := newPostgresTestAdapter(t)
+	ctx := context.Background()
+
+	id, err := a.Save(ctx, &model.Note{Summary: "x", Category: "notes", Embedding: []float32{1, 0, 0, 0}})
 	if err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := a.Get(ctx, id[:8])
-	if err != nil {
-		t.Fatalf("Get short prefix: %v", err)
+	if _, err := a.Get(ctx, id[:8]); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Get(prefix) error = %v, want ErrNotFound", err)
 	}
-	if got.ID != id {
-		t.Errorf("expected full ID %q, got %q", id, got.ID)
+	if err := a.Delete(ctx, id[:8]); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Delete(prefix) error = %v, want ErrNotFound", err)
 	}
-}
-
-func TestPostgres_DeleteByShortPrefix(t *testing.T) {
-	a := newPostgresTestAdapter(t)
-	ctx := context.Background()
-
-	id, _ := a.Save(ctx, &model.Note{Summary: "x", Category: "notes", Embedding: []float32{1, 0, 0, 0}})
-
-	if err := a.Delete(ctx, id[:8]); err != nil {
-		t.Fatalf("Delete short prefix: %v", err)
+	if err := a.Delete(ctx, id); err != nil {
+		t.Fatalf("Delete(full ID): %v", err)
 	}
-
-	if _, err := a.Get(ctx, id); err == nil {
-		t.Fatal("expected Get to fail after delete")
+	if _, err := a.Get(ctx, id); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Get after delete error = %v, want ErrNotFound", err)
 	}
 }
 

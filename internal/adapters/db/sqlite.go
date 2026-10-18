@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -96,37 +97,60 @@ func (a *SQLiteAdapter) Save(ctx context.Context, note *model.Note) (string, err
 	return note.ID, tx.Commit()
 }
 
-// Get fetches a single note by ID prefix.
+// Get fetches a single note by full ID.
 func (a *SQLiteAdapter) Get(ctx context.Context, id string) (*model.Note, error) {
 	row := a.db.QueryRowContext(ctx, `
 		SELECT id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at
-		FROM notes WHERE id LIKE ? || '%' LIMIT 1`, id)
+		FROM notes WHERE id = ?`, id)
 
-	return scanNote(row)
+	n, err := scanNote(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return n, err
 }
 
-// Delete removes a note and its embedding by ID prefix.
+// Delete removes a note and its embedding by full ID.
 func (a *SQLiteAdapter) Delete(ctx context.Context, id string) error {
-	// Resolve prefix to full ID first.
-	var fullID string
-	err := a.db.QueryRowContext(ctx, `SELECT id FROM notes WHERE id LIKE ? || '%' LIMIT 1`, id).Scan(&fullID)
-	if err != nil {
-		return fmt.Errorf("note not found: %w", err)
-	}
-
 	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `DELETE FROM note_embeddings WHERE note_id = ?`, fullID); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM note_embeddings WHERE note_id = ?`, id); err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM notes WHERE id = ?`, fullID); err != nil {
+	res, err := tx.ExecContext(ctx, `DELETE FROM notes WHERE id = ?`, id)
+	if err != nil {
 		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
 	}
 	return tx.Commit()
+}
+
+// MatchIDs returns up to limit IDs starting with prefix. substr compares the
+// prefix literally, so % and _ in the input are not wildcards.
+func (a *SQLiteAdapter) MatchIDs(ctx context.Context, prefix string, limit int) ([]string, error) {
+	rows, err := a.db.QueryContext(ctx,
+		`SELECT id FROM notes WHERE substr(id, 1, ?) = ? ORDER BY id LIMIT ?`,
+		len(prefix), prefix, limit)
+	if err != nil {
+		return nil, fmt.Errorf("match ids: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // SearchSimilar returns top-K notes by L2 distance to vec, in ascending order.

@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -68,7 +69,14 @@ func (h *Handler) handleGetNote(ctx context.Context, req mcp.CallToolRequest) (*
 
 	note, err := h.Container.Notes.Get(ctx, id)
 	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("note %q not found", id)), nil
+		var amb *core.AmbiguousIDError
+		switch {
+		case errors.As(err, &amb), errors.Is(err, core.ErrInvalidID):
+			return mcp.NewToolResultError(err.Error()), nil
+		case errors.Is(err, db.ErrNotFound):
+			return mcp.NewToolResultError(fmt.Sprintf("note %q not found", id)), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("get note %q: %v", id, err)), nil
 	}
 
 	return mcp.NewToolResultText(formatNote(note, h.RevealSensitive)), nil

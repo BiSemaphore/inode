@@ -112,27 +112,51 @@ func (a *PostgresAdapter) Save(ctx context.Context, note *model.Note) (string, e
 	return note.ID, nil
 }
 
-// Get fetches a single note by ID prefix.
+// Get fetches a single note by full ID.
 func (a *PostgresAdapter) Get(ctx context.Context, id string) (*model.Note, error) {
 	row := a.pool.QueryRow(ctx, `
 		SELECT id, content_enc, content_plain, summary, category, tags, is_sensitive, created_at, updated_at
 		FROM notes
-		WHERE id LIKE $1 || '%'
-		LIMIT 1`, id)
-	return scanPgNote(row)
+		WHERE id = $1`, id)
+	n, err := scanPgNote(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return n, err
 }
 
-// Delete removes a note by ID prefix.
+// Delete removes a note by full ID.
 func (a *PostgresAdapter) Delete(ctx context.Context, id string) error {
-	var fullID string
-	err := a.pool.QueryRow(ctx, `SELECT id FROM notes WHERE id LIKE $1 || '%' LIMIT 1`, id).Scan(&fullID)
+	tag, err := a.pool.Exec(ctx, `DELETE FROM notes WHERE id = $1`, id)
 	if err != nil {
-		return fmt.Errorf("note not found: %w", err)
-	}
-	if _, err := a.pool.Exec(ctx, `DELETE FROM notes WHERE id = $1`, fullID); err != nil {
 		return fmt.Errorf("delete note: %w", err)
 	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
 	return nil
+}
+
+// MatchIDs returns up to limit IDs starting with prefix. left() compares the
+// prefix literally, so % and _ in the input are not wildcards.
+func (a *PostgresAdapter) MatchIDs(ctx context.Context, prefix string, limit int) ([]string, error) {
+	rows, err := a.pool.Query(ctx,
+		`SELECT id FROM notes WHERE left(id, $1) = $2 ORDER BY id LIMIT $3`,
+		len(prefix), prefix, limit)
+	if err != nil {
+		return nil, fmt.Errorf("match ids: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // SearchSimilar returns top-K notes by L2 distance to vec, ascending.

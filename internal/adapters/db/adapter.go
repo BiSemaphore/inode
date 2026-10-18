@@ -2,9 +2,13 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"github.com/BiSemaphore/inode/internal/model"
 )
+
+// ErrNotFound is returned by Get and Delete when no note has the given ID.
+var ErrNotFound = errors.New("note not found")
 
 // Filters for list and search queries.
 type Filters struct {
@@ -19,11 +23,15 @@ type Adapter interface {
 	// Save persists a note with its embedding. Returns the assigned ID.
 	Save(ctx context.Context, note *model.Note) (string, error)
 
-	// Get fetches a single note by ID.
+	// Get fetches a single note by its full ID. Returns ErrNotFound if absent.
 	Get(ctx context.Context, id string) (*model.Note, error)
 
-	// Delete removes a note by ID.
+	// Delete removes a note by its full ID. Returns ErrNotFound if absent.
 	Delete(ctx context.Context, id string) error
+
+	// MatchIDs returns up to limit full IDs that start with prefix, compared
+	// literally (no wildcards), in ID order. Callers resolve short IDs with it.
+	MatchIDs(ctx context.Context, prefix string, limit int) ([]string, error)
 
 	// SearchSimilar returns the top-K notes by cosine similarity to vec,
 	// optionally filtered by Filters.

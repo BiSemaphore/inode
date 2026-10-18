@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The default model for `llm.backend = claude-api` is now `claude-sonnet-5-5` (was Claude Sonnet 4.5, which reaches end of life on November 30, 2026). Only applies when `llm.model` is not set. Dependencies updated: Anthropic SDK v1.81.0, pgx v5.11.0, pgvector-go v0.4.1, go-sqlite3 v1.14.52, golang.org/x/crypto v0.58.0. ([#113](https://github.com/BiSemaphore/inode/pull/113))
 
+### Fixed
+- Short note IDs no longer pick a note at random. `inode note get`, `inode note delete` and MCP `get_note` used to take the first note whose ID started with the given text, so `inode note delete 3` could delete any note starting with `3`, and an empty ID or `%` matched any note. A prefix that matches more than one note is now refused with the list of matches, IDs may only contain hex digits and `-`, `note delete` needs at least 4 characters and its confirmation names the note (short ID, summary, category) instead of repeating your input. ([#90](https://github.com/BiSemaphore/inode/issues/90))
+
 ## [0.5.0] - 2026-10-18
 
 ### Added

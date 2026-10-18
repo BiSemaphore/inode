@@ -59,7 +59,7 @@ team is the next phase (see [What's next](#whats-next)).
 | `inode mcp` | Run the MCP server over stdio |
 | `inode version` | Print the version |
 
-IDs can be shortened to a prefix; the CLI prints the first 8 characters.
+IDs can be shortened to a prefix; the CLI prints the first 8 characters. A prefix that matches more than one note is refused with the list of matches, and `note delete` needs at least 4 characters.
 
 ## Categories
 

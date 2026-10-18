@@ -87,16 +87,12 @@ func Load() (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// Explicit bindings for keys that contain underscores
-	_ = v.BindEnv("llm.api_key", "INODE_LLM_API_KEY")
-	_ = v.BindEnv("llm.base_url", "INODE_LLM_BASE_URL")
-	_ = v.BindEnv("embedding.api_key", "INODE_EMBEDDING_API_KEY")
-	_ = v.BindEnv("embedding.base_url", "INODE_EMBEDDING_BASE_URL")
-	_ = v.BindEnv("embedding.dimension", "INODE_EMBEDDING_DIMENSION")
-	_ = v.BindEnv("db.backend", "INODE_DB_BACKEND")
-	_ = v.BindEnv("db.dsn", "INODE_DB_DSN")
-	_ = v.BindEnv("mcp.reveal_sensitive", "INODE_MCP_REVEAL_SENSITIVE")
-	_ = v.BindEnv("log.level", "INODE_LOG_LEVEL")
+	// Bind INODE_<KEY> for every key. AutomaticEnv alone only sees keys
+	// viper already knows from a default or the config file, so a key with
+	// no default (llm.model, ...) would ignore its environment variable.
+	for _, k := range Keys {
+		_ = v.BindEnv(k.Name)
+	}
 
 	// Config file: ~/.inode/config.toml
 	home, err := os.UserHomeDir()
@@ -109,14 +105,11 @@ func Load() (*Config, error) {
 	v.AddConfigPath(configDir)
 	_ = v.ReadInConfig() // non-fatal if file doesn't exist yet
 
-	// Defaults — Ollama local by default, no API keys required
+	// Defaults: Ollama locally, no API keys required. Model, base URL and
+	// dimension are deliberately not defaulted here: they depend on the backend
+	// and are filled in by core.ResolveBackends (#31).
 	v.SetDefault("llm.backend", "ollama")
-	v.SetDefault("llm.model", "llama3.2")
-	v.SetDefault("llm.base_url", "http://localhost:11434")
 	v.SetDefault("embedding.backend", "ollama")
-	v.SetDefault("embedding.model", "nomic-embed-text")
-	v.SetDefault("embedding.base_url", "http://localhost:11434")
-	v.SetDefault("embedding.dimension", 768)
 	v.SetDefault("db.backend", "sqlite")
 	v.SetDefault("db.path", filepath.Join(configDir, "notes.db"))
 	v.SetDefault("db.dsn", "")

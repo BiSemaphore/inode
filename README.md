@@ -82,6 +82,10 @@ inode config set llm.api_key sk-xxxx
 inode config set llm.model gpt-4o-mini   # optional, this is the default
 ```
 
+Each backend uses its own default model (and base URL where it has one) unless you set `llm.model`, `llm.base_url` or `embedding.model`; `inode config show` prints the values in use. For an embedding model other than `nomic-embed-text` or `voyage-3`, also set `embedding.dimension`.
+
+Choose the embedding backend before adding notes: notes embedded by one model cannot be searched with another, and re-embedding is not built yet ([#130](https://github.com/BiSemaphore/inode/issues/130), [#131](https://github.com/BiSemaphore/inode/issues/131)).
+
 These are completely optional. The Ollama path is fully featured.
 
 ### Optional: Postgres + pgvector backend

@@ -28,10 +28,10 @@ type OpenAIAdapter struct {
 // gateway, or a compatible endpoint. modelName defaults to a fast, cheap model.
 func NewOpenAIAdapter(apiKey, modelName, baseURL string) *OpenAIAdapter {
 	if baseURL == "" {
-		baseURL = "https://api.openai.com/v1"
+		baseURL = OpenAIDefaultURL
 	}
 	if modelName == "" {
-		modelName = "gpt-4o-mini"
+		modelName = OpenAIDefaultModel
 	}
 	return &OpenAIAdapter{
 		baseURL: strings.TrimRight(baseURL, "/"),

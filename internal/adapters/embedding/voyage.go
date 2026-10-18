@@ -11,7 +11,6 @@ import (
 
 const (
 	voyageAPIURL = "https://api.voyageai.com/v1/embeddings"
-	defaultModel = "voyage-3"
 )
 
 // VoyageAdapter implements EmbeddingAdapter using the Voyage AI REST API.
@@ -24,7 +23,7 @@ type VoyageAdapter struct {
 // NewVoyageAdapter creates a new Voyage AI embedding adapter.
 func NewVoyageAdapter(apiKey, model string) *VoyageAdapter {
 	if model == "" {
-		model = defaultModel
+		model = VoyageDefaultModel
 	}
 	return &VoyageAdapter{
 		apiKey: apiKey,

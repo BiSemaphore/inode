@@ -16,3 +16,25 @@ type Adapter interface {
 	// Embed converts text to a normalised float32 vector.
 	Embed(ctx context.Context, text string) ([]float32, error)
 }
+
+// Defaults used by each backend when embedding.model or embedding.base_url is
+// not set. core.ResolveBackends applies them.
+const (
+	OllamaDefaultURL   = "http://localhost:11434"
+	OllamaDefaultModel = "nomic-embed-text"
+	VoyageDefaultModel = "voyage-3"
+)
+
+// knownDimensions are the vector sizes of the default models. Any other model
+// needs embedding.dimension set explicitly: a wrong guess would create the
+// vector table with the wrong size.
+var knownDimensions = map[string]int{
+	OllamaDefaultModel: 768,
+	VoyageDefaultModel: 1024,
+}
+
+// Dimension returns the vector size of a known embedding model.
+func Dimension(model string) (int, bool) {
+	d, ok := knownDimensions[model]
+	return d, ok
+}

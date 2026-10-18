@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/BiSemaphore/inode/internal/config"
+	"github.com/BiSemaphore/inode/internal/core"
 	"github.com/spf13/cobra"
 )
 
@@ -62,11 +63,27 @@ var configShowCmd = &cobra.Command{
 				fmt.Fprintf(os.Stderr, "warning: %s is readable by other users (mode %o); it can hold API keys. Fix: chmod 600 %s\n", path, mode, path)
 			}
 		}
-		values := config.Values(cfg)
+		// Print what the commands will use: model, base URL and dimension
+		// left unset come from the selected backend (#31).
+		effective, err := core.ResolveBackends(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+		}
+		if effective == nil {
+			effective = cfg
+		}
+		set, values := config.Values(cfg), config.Values(effective)
 		for _, k := range config.Keys {
 			v := fmt.Sprint(values[k.Name])
 			if k.Secret {
 				v = redact(v)
+			}
+			if values[k.Name] != set[k.Name] {
+				backend := effective.LLM.Backend
+				if strings.HasPrefix(k.Name, "embedding.") {
+					backend = effective.Embedding.Backend
+				}
+				v += fmt.Sprintf("  (default for %s)", backend)
 			}
 			fmt.Printf("%-21s %s\n", k.Name, v)
 		}

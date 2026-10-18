@@ -64,7 +64,7 @@ Backend details:
 |---|---|---|---|
 | LLM `ollama` | `<llm.base_url>/api/chat` | `llama3.2` | JSON output via `"format":"json"` |
 | LLM `claude-api` | Anthropic API (official Go SDK) | `claude-sonnet-5-5` when `llm.model` is empty | needs `llm.api_key` |
-| LLM `openai` | `<base_url>/chat/completions`, plain `net/http` | `gpt-4o-mini` when `llm.model` is empty | JSON mode; base URL defaults to `https://api.openai.com/v1` only when empty (see #31) |
+| LLM `openai` | `<base_url>/chat/completions`, plain `net/http` | `gpt-4o-mini` when `llm.model` is empty | JSON mode; base URL defaults to `https://api.openai.com/v1` (section 11) |
 | Embedding `ollama` | `<embedding.base_url>/api/embed` | `nomic-embed-text`, 768 dimensions | |
 | Embedding `voyage` | `https://api.voyageai.com/v1/embeddings` | `voyage-3`, 1024 dimensions | needs `embedding.api_key` |
 
@@ -246,8 +246,7 @@ every call.
 
 | Key | Default |
 |---|---|
-| `llm.backend`, `llm.model`, `llm.base_url` | `ollama`, `llama3.2`, `http://localhost:11434` |
-| `embedding.backend`, `embedding.model`, `embedding.base_url`, `embedding.dimension` | `ollama`, `nomic-embed-text`, `http://localhost:11434`, `768` |
+| `llm.backend`, `embedding.backend` | `ollama`, `ollama` |
 | `db.backend`, `db.path`, `db.dsn` | `sqlite`, `~/.inode/notes.db`, empty |
 | `defaults.sensitive` | `true` |
 | `search.max_distance`, `search.top_k` | `1.0`, `5` |
@@ -265,8 +264,23 @@ with `llm.api_key`, `embedding.api_key` and `db.dsn` redacted.
 which keeps the file at mode 0600 because it can hold API keys in plaintext;
 `inode config show` warns if the file is readable by others.
 
-Known issue: cloud backends inherit the Ollama defaults for model and base
-URL unless you set them (#31). The full reference is #74.
+Model, base URL and embedding dimension have no global default. When unset,
+`core.ResolveBackends` (`internal/core/backends.go`) fills them from the
+selected backend; the values come from constants in the adapter packages:
+
+| Backend | Model | Base URL | Dimension |
+|---|---|---|---|
+| `llm.backend = ollama` | `llama3.2` | `http://localhost:11434` | |
+| `llm.backend = openai` | `gpt-4o-mini` | `https://api.openai.com/v1` | |
+| `llm.backend = claude-api` | `claude-sonnet-5-5` | (SDK default) | |
+| `embedding.backend = ollama` | `nomic-embed-text` | `http://localhost:11434` | 768 |
+| `embedding.backend = voyage` | `voyage-3` | (fixed API URL) | 1024 |
+
+Any other embedding model needs `embedding.dimension`; without it inode stops
+instead of guessing, because the dimension sizes the vector table. `inode
+config show` prints the resolved values, marked `(default for <backend>)`.
+Before #31 the Ollama values were global defaults, so cloud backends inherited
+them. The full reference is #74.
 
 ## 12. Files on disk
 

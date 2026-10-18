@@ -20,6 +20,10 @@ type Container struct {
 
 // NewContainer initialises every dependency from the loaded config.
 func NewContainer(cfg *config.Config) (*Container, error) {
+	cfg, err := ResolveBackends(cfg)
+	if err != nil {
+		return nil, err
+	}
 	// Key manager (encryption).
 	configDir, err := config.ConfigDir()
 	if err != nil {

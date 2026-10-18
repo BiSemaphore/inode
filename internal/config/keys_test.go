@@ -156,3 +156,35 @@ func TestStringValuesFromOlderVersionsStillLoad(t *testing.T) {
 		t.Errorf("dimension = %d, sensitive = %v; want 1024, false", cfg.Embedding.Dimension, cfg.Defaults.Sensitive)
 	}
 }
+
+// Every key can be set through INODE_<KEY>, including keys with no default
+// (llm.model, embedding.model, ...). Environment variables take priority over
+// config.toml, so the developer's own config file does not affect this test.
+func TestLoadReadsEnvForEveryKey(t *testing.T) {
+	samples := map[string]string{
+		"llm.backend": "openai", "llm.model": "gpt-4.1", "llm.base_url": "https://example.com/v1",
+		"llm.api_key": "sk-env", "embedding.backend": "voyage", "embedding.model": "voyage-3-large",
+		"embedding.base_url": "http://gpu:11434", "embedding.api_key": "pa-env",
+		"embedding.dimension": "2048", "db.backend": "postgres", "db.path": "/tmp/env.db",
+		"db.dsn": "postgres://env", "defaults.sensitive": "false", "search.top_k": "7",
+		"search.max_distance": "0.5", "mcp.reveal_sensitive": "true", "log.level": "warn",
+	}
+	for _, k := range Keys {
+		raw, ok := samples[k.Name]
+		if !ok {
+			t.Fatalf("no sample value for %s", k.Name)
+		}
+		t.Setenv("INODE_"+strings.ToUpper(strings.ReplaceAll(k.Name, ".", "_")), raw)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := Values(cfg)
+	for name, raw := range samples {
+		if s := fmt.Sprint(got[name]); s != raw {
+			t.Errorf("%s = %q from env, want %q", name, s, raw)
+		}
+	}
+}

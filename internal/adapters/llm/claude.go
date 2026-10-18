@@ -11,6 +11,10 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/option"
 )
 
+// ClaudeDefaultModel is used when llm.model is not set. Taken from the SDK so
+// the linter flags it when Anthropic deprecates the model.
+const ClaudeDefaultModel = string(anthropic.ModelClaudeSonnet5_5)
+
 // ClaudeAdapter implements LLMAdapter using the Anthropic Claude API.
 type ClaudeAdapter struct {
 	client anthropic.Client
@@ -20,7 +24,7 @@ type ClaudeAdapter struct {
 // NewClaudeAdapter creates a Claude API adapter.
 func NewClaudeAdapter(apiKey, modelName string) *ClaudeAdapter {
 	if modelName == "" {
-		modelName = string(anthropic.ModelClaudeSonnet5_5)
+		modelName = ClaudeDefaultModel
 	}
 	return &ClaudeAdapter{
 		client: anthropic.NewClient(option.WithAPIKey(apiKey)),

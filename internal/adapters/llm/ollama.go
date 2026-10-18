@@ -22,10 +22,10 @@ type OllamaAdapter struct {
 // NewOllamaAdapter creates an adapter pointed at the given Ollama base URL.
 func NewOllamaAdapter(baseURL, modelName string) *OllamaAdapter {
 	if baseURL == "" {
-		baseURL = "http://localhost:11434"
+		baseURL = OllamaDefaultURL
 	}
 	if modelName == "" {
-		modelName = "llama3.2"
+		modelName = OllamaDefaultModel
 	}
 	return &OllamaAdapter{
 		baseURL: strings.TrimRight(baseURL, "/"),

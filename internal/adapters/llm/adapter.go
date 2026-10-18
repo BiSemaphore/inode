@@ -45,3 +45,12 @@ type Adapter interface {
 	// Summarize returns a one-line description of the note content.
 	Summarize(ctx context.Context, content string) (string, error)
 }
+
+// Defaults used by each backend when llm.model or llm.base_url is not set.
+// core.ResolveBackends applies them, so `inode config show` can print them.
+const (
+	OllamaDefaultURL   = "http://localhost:11434"
+	OllamaDefaultModel = "llama3.2"
+	OpenAIDefaultURL   = "https://api.openai.com/v1"
+	OpenAIDefaultModel = "gpt-4o-mini"
+)

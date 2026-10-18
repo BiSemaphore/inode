@@ -20,10 +20,10 @@ type OllamaAdapter struct {
 // NewOllamaEmbeddingAdapter creates an adapter pointed at the given Ollama base URL.
 func NewOllamaEmbeddingAdapter(baseURL, modelName string) *OllamaAdapter {
 	if baseURL == "" {
-		baseURL = "http://localhost:11434"
+		baseURL = OllamaDefaultURL
 	}
 	if modelName == "" {
-		modelName = "nomic-embed-text"
+		modelName = OllamaDefaultModel
 	}
 	return &OllamaAdapter{
 		baseURL: strings.TrimRight(baseURL, "/"),

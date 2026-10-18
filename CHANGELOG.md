@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The MCP server is built on mcp-go v1.3.0 (was v0.54.0). Tools, their arguments and their responses are unchanged. ([#141](https://github.com/BiSemaphore/inode/issues/141))
+
 ## [0.5.1] - 2026-10-18
 
 ### Changed

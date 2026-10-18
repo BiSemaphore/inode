@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- README rewritten to match v0.5.x: what inode does, install requirements per platform (Go 1.26, a C compiler for SQLite on every platform), quick start on the Ollama path, per-backend defaults, MCP setup for Claude Code and Cursor, every command, and links to the docs instead of an outdated roadmap table. `inode --help` describes the tool the same way. ([#80](https://github.com/BiSemaphore/inode/issues/80))
 - The default model for `llm.backend = claude-api` is now `claude-sonnet-5-5` (was Claude Sonnet 4.5, which reaches end of life on November 30, 2026). Only applies when `llm.model` is not set. Dependencies updated: Anthropic SDK v1.81.0, pgx v5.11.0, pgvector-go v0.4.1, go-sqlite3 v1.14.52, golang.org/x/crypto v0.58.0. ([#113](https://github.com/BiSemaphore/inode/pull/113))
 
 ### Fixed

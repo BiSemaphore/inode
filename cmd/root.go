@@ -17,7 +17,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "inode",
-	Short: "Personal knowledge base and secret vault — semantic search via vector embeddings and RAG",
+	Short: "Command-line knowledge base and secret vault, searched by meaning",
 	Long: `inode stores notes, secrets, commands, and decisions locally.
 Retrieve anything later using natural language via vector similarity search and LLM inference.
 

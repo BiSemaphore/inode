@@ -4,7 +4,12 @@
 
 <br/>
 
-**inode** is a CLI tool for storing notes, secrets, API keys, commands, and decisions — retrieved via vector similarity search and LLM inference instead of grep, folders, or memory. It runs entirely on your machine; the default backends are local (Ollama for both LLM and embeddings, SQLite for storage).
+[![CI](https://github.com/BiSemaphore/inode/actions/workflows/ci.yml/badge.svg)](https://github.com/BiSemaphore/inode/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/BiSemaphore/inode)](https://github.com/BiSemaphore/inode/releases)
+[![Go](https://img.shields.io/github/go-mod/go-version/BiSemaphore/inode)](go.mod)
+[![License](https://img.shields.io/github/license/BiSemaphore/inode)](LICENSE)
+
+**inode** is a command-line knowledge base for the things engineers keep losing: commands, API keys, decisions, runbooks. You save a note in plain text and later ask for it in plain English. inode finds it by meaning (vector search) and answers from your notes only. By default it runs on your machine with Ollama and SQLite: no API keys, no account.
 
 ```console
 $ inode add "staging DB creds: vault write database/rotate-root/staging"
@@ -19,53 +24,61 @@ Run vault write database/rotate-root/staging, then restart the api.
 
 ---
 
-## Features
+## What it does
 
-- **Natural-language retrieval** — ask in plain English, get the right note back
-- **Auto-classification** — the LLM picks the category and tags from a curated set
-- **Sensitive-value protection** — secrets are AES-256-GCM encrypted at rest, masked by default
-- **Local-first by default** — Ollama for LLM and embeddings, SQLite for storage; no API keys, no account, no internet required
-- **Cross-platform** — single Go binary on macOS, Linux, and Windows
-- **Optional cloud backends** — Claude API + Voyage AI for higher-quality answers if you want them
+- **Ask in plain English.** `inode get` turns your question into an embedding, finds the closest notes, and has the LLM answer from those notes, listing them as sources. When nothing relevant is stored, it says so.
+- **Sorts notes for you.** Each note gets one of nine categories and a few tags from the LLM. `--category` and `--tags` override it.
+- **Keeps secrets out of sight.** Notes marked sensitive are encrypted with AES-256-GCM before they are written and stay masked in output until you confirm a reveal. A summary that repeats a secret-looking value from the note is replaced. Details in [SECURITY.md](SECURITY.md).
+- **Runs offline by default.** Ollama for the LLM and embeddings, SQLite (with sqlite-vec) for storage.
+- **Other backends when you want them.** Claude or OpenAI for the LLM, Voyage for embeddings, Postgres with pgvector for storage.
+- **Works with coding agents.** `inode mcp` is a read-only MCP server, so Claude Code or Cursor can search your notes.
 
 ---
 
 ## Install
 
-### Build from source (recommended while we iterate)
-
 ```bash
 go install github.com/BiSemaphore/inode@latest
+inode version
 ```
 
-Needs Go 1.26 or newer and, for the default SQLite backend, CGO with a C compiler. Versions before v0.5.0 were published as `github.com/shahid-io/inode`.
+You need **Go 1.26 or newer** and **a C compiler**: SQLite and sqlite-vec are compiled in through CGO, whichever storage backend you use.
 
-### Releases
+| Platform | How |
+|---|---|
+| macOS | `go install`; the compiler comes with Xcode Command Line Tools (`xcode-select --install`) |
+| Linux | `go install` with `gcc`, or the linux/amd64 archive on [Releases](https://github.com/BiSemaphore/inode/releases) |
+| Windows | `go install` from an MSYS2 MinGW-w64 shell with `mingw-w64-x86_64-gcc` and `mingw-w64-x86_64-sqlite3`; see [CONTRIBUTING.md](CONTRIBUTING.md#prerequisites) |
 
-[GitHub Releases](https://github.com/BiSemaphore/inode/releases) has a pre-built linux/amd64 archive for each version. On macOS, Windows and other architectures, use `go install` above; more release targets are tracked in [#33](https://github.com/BiSemaphore/inode/issues/33).
+CI builds and tests on all three. Release archives exist for linux/amd64 only for now; more targets are tracked in [#33](https://github.com/BiSemaphore/inode/issues/33). Versions before v0.5.0 were published as `github.com/shahid-io/inode`.
 
 ---
 
-## Quick Start (zero-cost path)
+## Quick start
 
 ```bash
-# 1. Install Ollama and pull the local models (one-time, free)
-brew install ollama
-ollama pull llama3.2
-ollama pull nomic-embed-text
+# 1. Install Ollama (https://ollama.com/download), start it, pull two models
+ollama pull llama3.2           # answers, categories, summaries
+ollama pull nomic-embed-text   # embeddings for search
 
 # 2. Save something
-inode add "My GitHub PAT is ghp_xxxxxxxxxx"
+inode add "docker system prune -af removes all unused images and containers"
+inode add "stripe test key sk_test_xxxxxxxx" --sensitive
 
 # 3. Find it later
-inode get "github personal access token"
+inode get "how do I clean up docker"
+inode list
 ```
 
-That's it. No API keys, no account, no telemetry. Everything stays on your laptop.
+The first command creates `~/.inode/notes.db` and a master secret in your OS keychain (used to encrypt sensitive notes). Nothing else to set up.
 
-### Optional: cloud backends
+---
 
-If you want Claude-quality answers and Voyage-quality embeddings:
+## Other backends (optional)
+
+Every setting can go in `~/.inode/config.toml` with `inode config set <key> <value>`, or in an environment variable named `INODE_` plus the key in capitals with `.` replaced by `_` (`INODE_LLM_API_KEY`). `inode config set --help` lists every key and `inode config show` prints the values in use.
+
+**Claude for answers, Voyage for embeddings:**
 
 ```bash
 inode config set llm.backend claude-api
@@ -74,54 +87,50 @@ inode config set embedding.backend voyage
 inode config set embedding.api_key pa-xxxx
 ```
 
-Or OpenAI for the LLM (`llm.base_url` also points it at Azure OpenAI or any compatible gateway):
+**OpenAI for answers** (`llm.base_url` also points it at Azure OpenAI or any compatible endpoint):
 
 ```bash
 inode config set llm.backend openai
 inode config set llm.api_key sk-xxxx
-inode config set llm.model gpt-4o-mini   # optional, this is the default
 ```
 
-Each backend uses its own default model (and base URL where it has one) unless you set `llm.model`, `llm.base_url` or `embedding.model`; `inode config show` prints the values in use. For an embedding model other than `nomic-embed-text` or `voyage-3`, also set `embedding.dimension`.
+Each backend uses its own default model unless you set `llm.model` or `embedding.model`: `llama3.2`, `claude-sonnet-5-5`, `gpt-4o-mini`, `nomic-embed-text`, `voyage-3`. For any other embedding model, also set `embedding.dimension`.
+
+Cloud backends receive the text of your notes, sensitive ones included: on `inode add` to classify and embed them, and on `inode get` as the sources for the answer. See [SECURITY.md](SECURITY.md).
 
 Choose the embedding backend before adding notes: notes embedded by one model cannot be searched with another, and re-embedding is not built yet ([#130](https://github.com/BiSemaphore/inode/issues/130), [#131](https://github.com/BiSemaphore/inode/issues/131)).
 
-These are completely optional. The Ollama path is fully featured.
-
-### Optional: Postgres + pgvector backend
-
-By default inode uses SQLite + sqlite-vec — single file, zero infrastructure.
-
-If you're on Windows (where the sqlite-vec CGO build chain is painful) or you'd rather run on a real database, you can switch to Postgres + pgvector. The Postgres driver is pure Go, so `go install` works without any C toolchain.
+**Postgres with pgvector** instead of SQLite:
 
 ```bash
-# 1. Start a pgvector-enabled Postgres (compose file in repo root)
-docker compose up -d
-
-# 2. Point inode at it
+docker compose up -d pgvector    # compose file in the repo root
 inode config set db.backend postgres
 inode config set db.dsn "postgres://postgres:password@localhost:5432/postgres?sslmode=disable"
 ```
 
-inode will `CREATE EXTENSION vector` and create the `notes` table on first run. SQLite remains the default — Postgres is opt-in.
+inode creates the `vector` extension and its tables on first run. Schema upgrades run automatically on both backends; for SQLite, inode first writes a backup next to the database (`notes.db.bak-v<n>-<time>`).
 
-### Optional: MCP server (Claude Code / Cursor)
+---
 
-`inode mcp` runs as a Model Context Protocol server over stdio so an MCP-aware AI client can read your knowledge base.
+## Use it from Claude Code or Cursor (MCP)
 
-Exposes three read-only tools to the calling agent:
+`inode mcp` serves three read-only tools over stdio:
 
-- `search_notes` — vector search; returns the most relevant notes
-- `list_notes` — paginated listing; metadata only
-- `get_note` — fetch a single note by ID or unique ID prefix
+| Tool | Returns |
+|---|---|
+| `search_notes` | the notes closest to a query |
+| `list_notes` | notes by category or tag, metadata only |
+| `get_note` | one note, by ID or unique ID prefix |
 
-Sensitive notes are excluded from search results and masked in `get_note` responses by default. To let the agent see them:
+Sensitive notes are left out of `search_notes` and `list_notes`, and `get_note` masks their content. `inode config set mcp.reveal_sensitive true` lets the agent read them.
+
+Claude Code:
 
 ```bash
-inode config set mcp.reveal_sensitive true
+claude mcp add inode -- inode mcp
 ```
 
-Wire it into your MCP client config (Claude Code example):
+Other clients (for Cursor, `~/.cursor/mcp.json`):
 
 ```json
 {
@@ -131,78 +140,66 @@ Wire it into your MCP client config (Claude Code example):
 }
 ```
 
-Writing notes from an agent isn't exposed yet — read-only is the safer first step.
+Adding notes from an agent is not exposed yet ([#58](https://github.com/BiSemaphore/inode/issues/58)).
 
 ---
 
 ## Commands
 
 ```bash
-# Add notes
+# Add (with no argument, opens $EDITOR)
 inode add "note content"
-inode add "secret" --sensitive
+inode add "a secret" --sensitive
+inode add "brew upgrade" --no-sensitive
 inode add "docker system prune -a" --category commands --tags docker,cleanup
-inode add                          # opens $EDITOR
 
-# Retrieve (aliases: ask, find, search)
+# Ask (aliases: ask, find, search)
 inode get "query"
-inode get "query" --reveal         # unmask sensitive values
+inode get "query" --reveal              # unmask sensitive values, after a confirmation
 
 # List
-inode list
+inode list                              # newest 20; --limit to change
 inode list --category credentials
 inode list --tag github
+inode list --sensitive                  # only sensitive notes, after a confirmation
 
-# Manage
+# One note (its ID, or a unique prefix of the ID shown by inode list)
 inode note get <id>
-inode note delete <id>
+inode note delete <id>                  # at least 4 characters; asks first
 
-# Config
-inode config set llm.backend claude-api
-inode config set llm.model claude-sonnet-5-5
+# Settings
+inode config set <key> <value>
 inode config show
+
+# Other
+inode mcp                               # MCP server over stdio
+inode version
 ```
 
 ### Categories
 
-inode classifies every note into one of nine strict categories:
+`credentials`, `commands`, `snippets`, `decisions`, `runbooks`, `learnings`, `references`, `contacts`, `notes`.
 
-`credentials` · `commands` · `snippets` · `decisions` · `runbooks` · `learnings` · `references` · `contacts` · `notes`
+If the LLM suggests anything else, the note goes to `notes`. `--category` overrides the LLM.
 
-If the LLM proposes something else, the classifier falls back to `notes`. You can override with `--category` and the classifier won't second-guess you.
+---
+
+## Status and roadmap
+
+inode is a single-user tool today, released as v0.5.x. The next phases add a self-hosted server so a team can share notes with permissions, then what an organization needs (sign-in through its identity provider, admin roles, audit). Design questions are settled in spike issues before any of it is built.
+
+- [Milestones](https://github.com/BiSemaphore/inode/milestones): what is planned for each release and phase
+- [CHANGELOG.md](CHANGELOG.md): what shipped in each version
 
 ---
 
 ## Documentation
 
 - [`docs/spec.md`](docs/spec.md): what inode does, for whom, and what it does not do
-- [`docs/architecture.md`](docs/architecture.md): how it is built, file by file
-
----
-
-## Roadmap
-
-| Phase | Status | Description |
-|---|---|---|
-| Phase 1 — Local MVP | **Shipped** | CLI, SQLite + sqlite-vec, encryption, semantic retrieval |
-| Phase 3 — Local LLM | **Shipped** | Ollama default for LLM and embeddings |
-| Phase 2 — Cloud | Hypothetical | Multi-user, PostgreSQL, JWT auth |
-| Phase 4 — Hardening | Planned | 2FA, rate limiting, audit log |
-| Phase 5 — Ecosystem | Planned | Web dashboard, MCP server, team workspaces |
-
-The original phase numbering had Cloud at Phase 2 and Local LLM at Phase 3. In practice, Local LLM shipped first because it's also the architectural posture — local-first is the design, not a feature behind a future-Phase fence.
-
----
-
-## Contributing
-
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
-
----
-
-## Security
-
-inode handles secrets and sensitive data. If you discover a vulnerability, please follow responsible disclosure — see [SECURITY.md](SECURITY.md).
+- [`docs/architecture.md`](docs/architecture.md): how it is built, file by file, including every setting and its default
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, workflow, and what a pull request needs
+- [RELEASING.md](RELEASING.md): how a version is cut
+- [SECURITY.md](SECURITY.md): what is protected, known limitations, and how to report a vulnerability
 
 ---
 

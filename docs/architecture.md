@@ -132,8 +132,15 @@ Run vault write database/rotate-root/staging, then restart the api.
 Other commands: `inode list` (filters `--category`, `--tag`, `--limit`;
 sensitive notes only with `--sensitive` and a confirmation), `inode note get <id>`
 (asks before revealing sensitive content), `inode note delete <id>`,
-`inode config set|show`, `inode mcp`, `inode version`. Note IDs are matched by
-prefix (`id LIKE '<prefix>%'`); see #90 for the ambiguity this allows.
+`inode config set|show`, `inode mcp`, `inode version`.
+
+Note IDs can be given as a prefix. `NoteService.Resolve`
+(`internal/core/notes.go`) accepts only hex digits and `-`, looks up matches
+with the adapter's `MatchIDs` (a literal prefix comparison, so `%` and `_` are
+not wildcards) and returns exactly one note: no match is "not found", more than
+one is an error listing the candidates (sensitive ones without their summary).
+Adapter `Get` and `Delete` take full IDs only. `inode note delete` needs at
+least 4 characters and its prompt names the resolved note (#90).
 
 ## 6. Encryption and keys
 

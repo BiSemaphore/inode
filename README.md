@@ -109,7 +109,7 @@ Exposes three read-only tools to the calling agent:
 
 - `search_notes` — vector search; returns the most relevant notes
 - `list_notes` — paginated listing; metadata only
-- `get_note` — fetch a single note by ID prefix
+- `get_note` — fetch a single note by ID or unique ID prefix
 
 Sensitive notes are excluded from search results and masked in `get_note` responses by default. To let the agent see them:
 

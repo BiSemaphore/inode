@@ -1,6 +1,6 @@
 # inode product spec
 
-What inode is, who it is for, and what it does and does not do, as of v0.5.0.
+What inode is, who it is for, and what it does and does not do, as of v0.5.1.
 How it is built is in [architecture.md](architecture.md).
 
 ## What it is
@@ -45,6 +45,8 @@ team is the next phase (see [What's next](#whats-next)).
 | OpenAI LLM backend | v0.5.0 |
 | Versioned schema migrations with an automatic backup | v0.5.0 |
 | Secrets kept out of summaries; an existing master secret is never replaced | v0.5.0 |
+| Each backend uses its own default model, URL and embedding dimension | v0.5.1 |
+| Ambiguous note ID prefixes are refused instead of matching any note | v0.5.1 |
 
 ## Commands
 

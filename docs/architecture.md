@@ -247,13 +247,19 @@ every call.
 | `mcp.reveal_sensitive` | `false` |
 | `log.level` | `info` |
 
+Every key is listed once in `config.Keys` (`internal/config/keys.go`), with
+its type, allowed values and whether it is a secret; a test fails if it and
+`Config` disagree. `inode config set` accepts exactly those keys, checks the
+value's type (`search.top_k abc` and `db.backend mysql` are rejected) and
+writes typed values (`top_k = 10`). `inode config show` prints every key,
+with `llm.api_key`, `embedding.api_key` and `db.dsn` redacted.
+
 `inode config set` writes through `config.Set` (`internal/config/write.go`),
 which keeps the file at mode 0600 because it can hold API keys in plaintext;
 `inode config show` warns if the file is readable by others.
 
-Known issues: cloud backends inherit the Ollama defaults for model and base
-URL unless you set them (#31); `config set` rejects some valid keys (#81).
-The full reference is #74.
+Known issue: cloud backends inherit the Ollama defaults for model and base
+URL unless you set them (#31). The full reference is #74.
 
 ## 12. Files on disk
 

@@ -55,7 +55,7 @@ team is the next phase (see [What's next](#whats-next)).
 | `inode list` | List notes. Flags: `--category`, `--tag`, `--limit` (default 20), `--sensitive` (asks first) |
 | `inode note get <id>` | Show one note; asks before revealing sensitive content |
 | `inode note delete <id>` | Delete one note |
-| `inode config set <key> <value>`, `inode config show` | Change or print settings (API keys redacted in `show`) |
+| `inode config set <key> <value>`, `inode config show` | Change or print settings; `set` checks the key and value type, `show` prints every key with API keys and `db.dsn` redacted |
 | `inode mcp` | Run the MCP server over stdio |
 | `inode version` | Print the version |
 

@@ -21,46 +21,40 @@ var configSetCmd = &cobra.Command{
 	Long: `Set a configuration key-value pair in ~/.inode/config.toml.
 
 Keys:
-  llm.backend          claude-api | openai | ollama
-  llm.model            e.g. claude-sonnet-5-5, gpt-4o-mini
-  llm.api_key          Anthropic or OpenAI API key
-  embedding.backend    voyage | local
-  embedding.api_key    Voyage AI API key
-  defaults.sensitive   true | false`,
+` + keyHelp(),
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		key, value := args[0], args[1]
+		name, raw := args[0], args[1]
 
-		allowed := map[string]bool{
-			"llm.backend": true, "llm.model": true, "llm.api_key": true, "llm.base_url": true,
-			"embedding.backend": true, "embedding.model": true, "embedding.api_key": true,
-			"embedding.base_url": true, "embedding.dimension": true,
-			"db.path": true, "defaults.sensitive": true, "log.level": true,
+		key, ok := config.LookupKey(name)
+		if !ok {
+			return fmt.Errorf("unknown config key %q (see inode config set --help)", name)
 		}
-		if !allowed[key] {
-			return fmt.Errorf("unknown config key %q", key)
+		value, err := key.Parse(raw)
+		if err != nil {
+			return err
 		}
 
 		configDir, err := config.ConfigDir()
 		if err != nil {
 			return err
 		}
-		if err := config.Set(configDir, key, value); err != nil {
+		if err := config.Set(configDir, name, value); err != nil {
 			return fmt.Errorf("write config: %w", err)
 		}
 
-		displayValue := value
-		if strings.HasSuffix(key, "api_key") {
-			displayValue = redact(value)
+		display := raw
+		if key.Secret {
+			display = redact(raw)
 		}
-		fmt.Printf("set %s = %s\n", key, displayValue)
+		fmt.Printf("set %s = %s\n", name, display)
 		return nil
 	},
 }
 
 var configShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Print current configuration (API keys redacted)",
+	Short: "Print current configuration (secrets redacted)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if dir, err := config.ConfigDir(); err == nil {
 			if mode, loose := config.LooseMode(dir); loose {
@@ -68,19 +62,31 @@ var configShowCmd = &cobra.Command{
 				fmt.Fprintf(os.Stderr, "warning: %s is readable by other users (mode %o); it can hold API keys. Fix: chmod 600 %s\n", path, mode, path)
 			}
 		}
-		fmt.Printf("LLM backend:         %s\n", cfg.LLM.Backend)
-		fmt.Printf("LLM model:           %s\n", cfg.LLM.Model)
-		fmt.Printf("LLM base URL:        %s\n", cfg.LLM.BaseURL)
-		fmt.Printf("LLM API key:         %s\n", redact(cfg.LLM.APIKey))
-		fmt.Printf("Embedding backend:   %s\n", cfg.Embedding.Backend)
-		fmt.Printf("Embedding model:     %s\n", cfg.Embedding.Model)
-		fmt.Printf("Embedding base URL:  %s\n", cfg.Embedding.BaseURL)
-		fmt.Printf("Embedding API key:   %s\n", redact(cfg.Embedding.APIKey))
-		fmt.Printf("Embedding dimension: %d\n", cfg.Embedding.Dimension)
-		fmt.Printf("DB path:             %s\n", cfg.DB.Path)
-		fmt.Printf("Default sensitive:   %v\n", cfg.Defaults.Sensitive)
+		values := config.Values(cfg)
+		for _, k := range config.Keys {
+			v := fmt.Sprint(values[k.Name])
+			if k.Secret {
+				v = redact(v)
+			}
+			fmt.Printf("%-21s %s\n", k.Name, v)
+		}
 		return nil
 	},
+}
+
+// keyHelp lists the settable keys for `inode config set --help`.
+func keyHelp() string {
+	var sb strings.Builder
+	for _, k := range config.Keys {
+		hint := k.Help
+		if len(k.Allowed) > 0 {
+			hint = strings.Join(k.Allowed, " | ") + ": " + hint
+		} else if k.Kind != config.String {
+			hint = k.Kind.String() + ": " + hint
+		}
+		fmt.Fprintf(&sb, "  %-21s %s\n", k.Name, hint)
+	}
+	return strings.TrimRight(sb.String(), "\n")
 }
 
 func init() {

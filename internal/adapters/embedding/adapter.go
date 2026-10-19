@@ -1,6 +1,9 @@
 package embedding
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
 // Adapter defines the contract for all embedding backends.
 // Implementations: voyage.go, ollama.go.
@@ -33,8 +36,9 @@ var knownDimensions = map[string]int{
 	VoyageDefaultModel: 1024,
 }
 
-// Dimension returns the vector size of a known embedding model.
+// Dimension returns the vector size of a known embedding model. Ollama's
+// "name:latest" is the same model as "name".
 func Dimension(model string) (int, bool) {
-	d, ok := knownDimensions[model]
+	d, ok := knownDimensions[strings.TrimSuffix(model, ":latest")]
 	return d, ok
 }

@@ -85,6 +85,44 @@ jobs:
         with:
           files: coverage.out
 
+  # The Postgres adapter tests skip without INODE_TEST_PG_DSN. This job runs
+  # them against the same pgvector image as docker-compose.yml, and fails if
+  # any of them skipped. Service containers need a Linux runner.
+  postgres:
+    name: Postgres tests
+    runs-on: ubuntu-latest
+
+    services:
+      pgvector:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.26"
+          cache: true
+
+      - name: Test
+        shell: bash # -o pipefail, so a failing go test is not hidden by tee
+        env:
+          CGO_ENABLED: 1
+          INODE_TEST_PG_DSN: postgres://postgres:password@localhost:5432/postgres?sslmode=disable
+        run: |
+          go test -race -count=1 -v -run Postgres ./internal/adapters/db/ | tee test.out
+          if grep -q -- '--- SKIP' test.out; then echo "Postgres tests skipped"; exit 1; fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

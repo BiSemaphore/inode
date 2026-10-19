@@ -96,6 +96,10 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	tagger := NewTaggerService(llmAdapter)
 	notes := NewNoteService(dbAdapter, embAdapter, tagger, keyMgr)
 	search := NewSearchService(dbAdapter, embAdapter, llmAdapter, keyMgr, cfg.Search.MaxDistance, cfg.Search.TopK)
+	if err := guardEmbeddingSpace(context.Background(), dbAdapter, configuredSpace(cfg), notes, search); err != nil {
+		_ = dbAdapter.Close()
+		return nil, fmt.Errorf("check embedding model: %w", err)
+	}
 
 	// One-time check of summaries saved before they were validated (#53).
 	// After the first run this is a single query that returns nothing. A

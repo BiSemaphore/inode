@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - The MCP server is built on mcp-go v1.3.0 (was v0.54.0). Tools, their arguments and their responses are unchanged. ([#141](https://github.com/BiSemaphore/inode/issues/141))
 
+### Fixed
+- Changing the embedding model no longer breaks search silently. The database now records the embedding backend, model and dimension its notes were embedded with. If the config names a different model, `inode add`, `inode get` and MCP `search_notes` stop with a message naming both models and the `inode config set` commands that switch back, instead of returning unrelated notes (same dimension) or failing with a database error (different dimension). `inode list`, `inode note` and MCP `list_notes` / `get_note` keep working. A database with no notes takes the new model, resizing its vector table if needed. Databases from earlier versions are upgraded on first run: the dimension is read from the schema and, when it matches the config, the configured model is recorded, since it is the only information available. ([#130](https://github.com/BiSemaphore/inode/issues/130))
+- `embedding.model = nomic-embed-text:latest` is recognised as `nomic-embed-text` (768 dimensions) instead of requiring `embedding.dimension`. ([#130](https://github.com/BiSemaphore/inode/issues/130))
+
 ## [0.5.1] - 2026-10-18
 
 ### Changed

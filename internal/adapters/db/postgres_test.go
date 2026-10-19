@@ -21,8 +21,8 @@ import (
 //	INODE_TEST_PG_DSN=postgres://postgres:password@localhost:5432/postgres?sslmode=disable \
 //	    go test ./internal/adapters/db/...
 //
-// Each test truncates the shared `notes` table before running, so tests must
-// not be parallelised within this package.
+// Each test truncates the shared `notes` and `embedding_meta` tables before
+// running, so tests must not be parallelised within this package.
 func newPostgresTestAdapter(t *testing.T) *PostgresAdapter {
 	t.Helper()
 	dsn := os.Getenv("INODE_TEST_PG_DSN")
@@ -34,8 +34,8 @@ func newPostgresTestAdapter(t *testing.T) *PostgresAdapter {
 	if err != nil {
 		t.Fatalf("NewPostgresAdapter: %v", err)
 	}
-	if _, err := a.pool.Exec(ctx, "TRUNCATE notes"); err != nil {
-		t.Fatalf("truncate notes: %v", err)
+	if _, err := a.pool.Exec(ctx, "TRUNCATE notes, embedding_meta"); err != nil {
+		t.Fatalf("truncate: %v", err)
 	}
 	t.Cleanup(func() { _ = a.Close() })
 	return a

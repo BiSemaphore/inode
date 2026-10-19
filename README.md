@@ -98,7 +98,7 @@ Each backend uses its own default model unless you set `llm.model` or `embedding
 
 Cloud backends receive the text of your notes, sensitive ones included: on `inode add` to classify and embed them, and on `inode get` as the sources for the answer. See [SECURITY.md](SECURITY.md).
 
-Choose the embedding backend before adding notes: notes embedded by one model cannot be searched with another, and re-embedding is not built yet ([#130](https://github.com/BiSemaphore/inode/issues/130), [#131](https://github.com/BiSemaphore/inode/issues/131)).
+Choose the embedding backend before adding notes: notes embedded by one model cannot be searched with another. inode records the model in the database, and if the config later names a different one, `add` and `get` stop and say how to switch back; `list` and `note` keep working. Re-embedding existing notes with a new model is not built yet ([#131](https://github.com/BiSemaphore/inode/issues/131)).
 
 **Postgres with pgvector** instead of SQLite:
 

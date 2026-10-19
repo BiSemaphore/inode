@@ -19,6 +19,10 @@ type NoteService struct {
 	embedding embedding.Adapter
 	tagger    *TaggerService
 	keyMgr    *KeyManager
+
+	// embeddingErr, when set, is returned by Add: the configured embedding
+	// model is not the one the stored notes were embedded with.
+	embeddingErr error
 }
 
 // NewNoteService creates a NoteService with all required dependencies.
@@ -41,6 +45,9 @@ type AddOptions struct {
 func (s *NoteService) Add(ctx context.Context, content string, opts AddOptions) (*model.Note, error) {
 	if content == "" {
 		return nil, fmt.Errorf("content cannot be empty")
+	}
+	if s.embeddingErr != nil {
+		return nil, s.embeddingErr
 	}
 
 	// Apply config default for sensitivity if not explicitly set.

@@ -76,12 +76,27 @@ var sqliteMigrations = func(dimension int) []migration {
 				`UPDATE notes SET summary_checked = 1 WHERE is_sensitive = 0`,
 			},
 		},
+		{
+			// The embedding backend, model and dimension the stored vectors
+			// were made with (#130). Filled at start-up by the core package,
+			// which knows the config; see core.checkEmbeddingSpace.
+			version: 3,
+			name:    "embedding_meta",
+			stmts: []string{
+				`CREATE TABLE embedding_meta (
+					id        INTEGER PRIMARY KEY CHECK (id = 1),
+					backend   TEXT    NOT NULL,
+					model     TEXT    NOT NULL,
+					dimension INTEGER NOT NULL
+				)`,
+			},
+		},
 	}
 }
 
-// The embedding dimension is baked into the schema on first run. If
-// embedding.dimension changes later, inserts of the new size fail with a
-// pgvector error, the same constraint the SQLite path has.
+// The embedding dimension is baked into the schema on first run, as in the
+// SQLite path. A later change of embedding model or dimension is caught
+// before any insert or search by core.checkEmbeddingSpace (#130).
 var postgresMigrations = func(dimension int) []migration {
 	return []migration{
 		{
@@ -109,6 +124,19 @@ var postgresMigrations = func(dimension int) []migration {
 			stmts: []string{
 				`ALTER TABLE notes ADD COLUMN summary_checked BOOLEAN NOT NULL DEFAULT FALSE`,
 				`UPDATE notes SET summary_checked = TRUE WHERE is_sensitive = FALSE`,
+			},
+		},
+		{
+			// See the SQLite migration 3 comment.
+			version: 3,
+			name:    "embedding_meta",
+			stmts: []string{
+				`CREATE TABLE embedding_meta (
+					id        INTEGER PRIMARY KEY CHECK (id = 1),
+					backend   TEXT    NOT NULL,
+					model     TEXT    NOT NULL,
+					dimension INTEGER NOT NULL
+				)`,
 			},
 		},
 	}

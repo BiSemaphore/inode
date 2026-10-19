@@ -17,6 +17,15 @@ type Filters struct {
 	IsSensitive *bool // nil = no filter
 }
 
+// EmbeddingSpace identifies what produced a database's stored vectors.
+// Vectors from different models cannot be compared, even when they have the
+// same dimension. An empty Model means the model is unknown.
+type EmbeddingSpace struct {
+	Backend   string
+	Model     string
+	Dimension int
+}
+
 // Adapter defines the contract for all database backends.
 // Implementations: sqlite.go (Phase 1), postgres.go (Phase 2).
 type Adapter interface {
@@ -46,6 +55,24 @@ type Adapter interface {
 
 	// SetSummary replaces a note's summary by full ID and marks it validated.
 	SetSummary(ctx context.Context, id, summary string) error
+
+	// EmbeddingSpace returns the recorded embedding backend, model and
+	// dimension. ok is false when none is recorded (databases created before
+	// v0.6.0).
+	EmbeddingSpace(ctx context.Context) (space EmbeddingSpace, ok bool, err error)
+
+	// SetEmbeddingSpace records the embedding backend, model and dimension.
+	SetEmbeddingSpace(ctx context.Context, s EmbeddingSpace) error
+
+	// VectorDimension returns the vector size the schema was created with.
+	VectorDimension(ctx context.Context) (int, error)
+
+	// ResizeVectors changes the vector size of the schema. It fails if any
+	// note has an embedding.
+	ResizeVectors(ctx context.Context, dimension int) error
+
+	// CountNotes returns the number of stored notes.
+	CountNotes(ctx context.Context) (int, error)
 
 	// Close releases the database connection.
 	Close() error

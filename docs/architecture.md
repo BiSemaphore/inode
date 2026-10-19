@@ -33,7 +33,7 @@ neither calls an adapter directly.
 | Package | Files | Responsibility |
 |---|---|---|
 | `cmd` | `root.go`, `add.go`, `get.go`, `list.go`, `note.go`, `config.go`, `mcp.go` | Commands, flags, output formatting, confirmation prompts |
-| `internal/core` | `container.go` | Builds every adapter and service from the config; runs the one-time summary check |
+| `internal/core` | `container.go` | Builds every adapter and service from the config; checks the embedding model against the database; runs the one-time summary check |
 | | `notes.go` | `NoteService`: add (classify, embed, encrypt, save), get (decrypt), list, delete |
 | | `search.go` | `SearchService`: embed the query, vector search, distance filter, decrypt, LLM answer; `MaskSensitive` |
 | | `tagger.go` | `TaggerService`: category, tags, sensitivity and summary, explicit flags first |
@@ -71,7 +71,9 @@ Backend details:
 Embedding adapters must return L2-normalised vectors (`embedding/adapter.go`):
 the distance threshold in search assumes unit vectors. All notes in one
 database must use the same embedding model and dimension; the dimension is
-fixed into the schema when the database is created.
+fixed into the schema when the database is created. The database records which
+backend, model and dimension made its vectors, and inode checks the config
+against that record on every start (section 9).
 
 `llm.Answer` returns the answer, whether the notes contained it, and the
 short IDs of the notes it used. Search shows only those notes as sources.
@@ -204,6 +206,7 @@ no gaps and run in order when the adapter opens the database.
 |---|---|---|
 | 1 | `notes` (id, content_enc, content_plain, summary, category, tags JSON text, is_sensitive, created_at, updated_at); `note_embeddings` vec0 table (note_id, embedding FLOAT[dim]) | `notes` with the same columns, `tags JSONB`, `embedding vector(dim)` |
 | 2 | `summary_checked` column; non-sensitive rows marked checked | same |
+| 3 | `embedding_meta`: one row with the embedding backend, model and dimension of the stored vectors | same |
 
 | | SQLite | Postgres |
 |---|---|---|
@@ -217,6 +220,24 @@ Databases created before migrations existed are recognised as version 1
 without changes. After migration 2, `ScrubSensitiveSummaries`
 (`summary.go`) checks the old sensitive summaries once and records each check
 in `summary_checked`.
+
+### Embedding model check
+
+Vectors from two models cannot be compared, even at the same dimension, so
+search would return unrelated notes without an error. `NewContainer` compares
+the configured embedding backend, model and dimension with `embedding_meta`
+(`internal/core/space.go`, #130):
+
+| Database | Result |
+|---|---|
+| Matches the config | Normal use |
+| Differs, and holds notes | `add`, `get` and MCP `search_notes` fail with `EmbeddingMismatchError`, which names both models and the `inode config set` commands that switch back. `list`, `note get`, `note delete` and MCP `list_notes` / `get_note` keep working. |
+| Differs, and holds no notes | The config is adopted; if the dimension changed, the vector table is recreated (`ResizeVectors`) |
+| No record yet (created before v0.6.0) | The dimension is read from the schema (vec0 definition, or the `vector(n)` type of `notes.embedding`). If it equals the configured one, the configured model is recorded, since nothing else is known; a model changed earlier with the same dimension cannot be detected. Otherwise the model is recorded as unknown and the database is treated as different. |
+
+Ollama's `name:latest` counts as `name`. The base URL is not compared: the
+same model served from another host gives the same vectors. Re-embedding
+stored notes with a new model is #131.
 
 ## 10. MCP server
 

@@ -46,6 +46,11 @@ type SearchService struct {
 	keyMgr      *KeyManager
 	maxDistance float32 // service-level default; per-call override via SearchOptions
 	topK        int     // service-level default; per-call override via SearchOptions
+
+	// embeddingErr, when set, is returned by Retrieve and Search: the
+	// configured embedding model is not the one the stored notes were
+	// embedded with.
+	embeddingErr error
 }
 
 // NewSearchService creates a SearchService with all required dependencies.
@@ -106,6 +111,9 @@ type SearchOptions struct {
 func (s *SearchService) Retrieve(ctx context.Context, query string, opts SearchOptions) ([]*model.Note, error) {
 	if query == "" {
 		return nil, fmt.Errorf("query cannot be empty")
+	}
+	if s.embeddingErr != nil {
+		return nil, s.embeddingErr
 	}
 
 	topK := opts.TopK

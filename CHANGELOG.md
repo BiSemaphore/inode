@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - The CLI no longer calls what you store "notes". New commands `inode show <id>` and `inode delete <id>` replace `inode note get` and `inode note delete`; prompts and output name the item by its category (`Delete credential #3f1a9c02 "stripe test key"?`, `deleted credential #3f1a9c02`), and help text, errors and messages describe API keys, passwords, tokens, commands and runbooks. Internal names (`~/.inode/notes.db`) and MCP tool names are unchanged. ([#145](https://github.com/BiSemaphore/inode/issues/145))
-
 - The MCP server is built on mcp-go v1.3.0 (was v0.54.0). Tools, their arguments and their responses are unchanged. ([#141](https://github.com/BiSemaphore/inode/issues/141))
 
 ### Deprecated

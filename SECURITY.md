@@ -54,7 +54,7 @@ fix ships as a new patch or minor version. Upgrade with
 | Salt | `~/.inode/.salt`, mode 0600 | `internal/core/encryption.go` (`loadOrCreateSalt`) |
 | Data directory | `~/.inode` is created with mode 0700 | `cmd/config.go`, `internal/core/encryption.go` (`NewKeyManager`) |
 | Config file | `~/.inode/config.toml` is written with mode 0600; a file written by an earlier version is tightened on the next `inode config set`, and `inode config show` warns while it is not | `internal/config/write.go` |
-| Output masking | Sensitive content is masked by default in `inode get`, `inode list` and `inode note get`; `--reveal`, `list --sensitive` and revealing in `note get` ask for confirmation | `internal/core/search.go` (`MaskSensitive`), `cmd/get.go`, `cmd/list.go`, `cmd/note.go` |
+| Output masking | Sensitive content is masked by default in `inode get`, `inode list` and `inode show`; `--reveal`, `list --sensitive` and revealing in `show` ask for confirmation | `internal/core/search.go` (`MaskSensitive`), `cmd/get.go`, `cmd/list.go`, `cmd/item.go` |
 | MCP server | Sensitive notes are excluded from `search_notes` results and masked in `get_note` unless `mcp.reveal_sensitive` is set; all tools are read-only | `internal/mcp/tools.go`, `internal/mcp/server.go` |
 | Default backends | Ollama (LLM and embeddings) and SQLite run on your machine; nothing leaves it unless you configure a cloud backend | `internal/config/settings.go` (defaults) |
 

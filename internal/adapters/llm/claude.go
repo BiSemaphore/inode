@@ -88,7 +88,7 @@ The summary describes what the note is for. Never copy secret values (keys, toke
 // actually useful and which ones the model relied on.
 func (c *ClaudeAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (AnswerResult, error) {
 	if len(notes) == 0 {
-		return AnswerResult{Answer: "No relevant notes found.", Matched: false}, nil
+		return AnswerResult{Answer: "Nothing relevant found.", Matched: false}, nil
 	}
 
 	prompt := fmt.Sprintf(`You are a personal knowledge assistant. Answer the user's query using ONLY the notes provided below. For sensitive values, include them as-is — the CLI handles masking.
@@ -164,7 +164,7 @@ func parseAnswerJSON(raw string) (AnswerResult, error) {
 
 	answer := strings.TrimSpace(parsed.Answer)
 	if answer == "" {
-		answer = "No relevant notes found."
+		answer = "Nothing relevant found."
 	}
 
 	matched := parsed.Matched && len(parsed.UsedNoteIDs) > 0

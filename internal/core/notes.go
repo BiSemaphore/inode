@@ -112,7 +112,7 @@ const maxMatches = 5
 
 // ErrInvalidID is returned for an empty ID or one with characters that never
 // appear in a note ID (IDs are UUIDs: hex digits and dashes).
-var ErrInvalidID = errors.New("invalid note ID: use the hex ID shown by inode list")
+var ErrInvalidID = errors.New("invalid ID: use the hex ID shown by inode list")
 
 // AmbiguousIDError is returned when an ID prefix matches more than one note.
 // Matches holds up to maxMatches of them; More is true when there are others.
@@ -124,7 +124,7 @@ type AmbiguousIDError struct {
 
 func (e *AmbiguousIDError) Error() string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "note ID %q matches more than one note, use more characters:", e.Prefix)
+	fmt.Fprintf(&sb, "ID %q matches more than one item, use more characters:", e.Prefix)
 	for _, n := range e.Matches {
 		// The error can reach an MCP client, which never sees sensitive
 		// notes unless mcp.reveal_sensitive is set, so leave their summary out.
@@ -169,7 +169,7 @@ func (s *NoteService) Resolve(ctx context.Context, ref string) (*model.Note, err
 	for _, id := range ids[:min(len(ids), maxMatches)] {
 		n, err := s.db.Get(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("get note %s: %w", ShortID(id), err)
+			return nil, fmt.Errorf("get %s: %w", ShortID(id), err)
 		}
 		notes = append(notes, n)
 	}
@@ -193,7 +193,7 @@ func (s *NoteService) Get(ctx context.Context, ref string) (*model.Note, error) 
 		}
 		plain, err := Decrypt(key, note.ContentEnc, []byte("note"))
 		if err != nil {
-			return nil, fmt.Errorf("decrypt note: %w", err)
+			return nil, fmt.Errorf("decrypt: %w", err)
 		}
 		note.ContentPlain = string(plain)
 	}
@@ -205,7 +205,7 @@ func (s *NoteService) Get(ctx context.Context, ref string) (*model.Note, error) 
 // Resolve first, so a prefix can never delete a note the user did not see.
 func (s *NoteService) Delete(ctx context.Context, id string) error {
 	if err := s.db.Delete(ctx, id); err != nil {
-		return fmt.Errorf("delete note %s: %w", ShortID(id), err)
+		return fmt.Errorf("delete %s: %w", ShortID(id), err)
 	}
 	return nil
 }

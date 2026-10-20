@@ -169,7 +169,7 @@ The summary describes what the note is for. Never copy secret values (keys, toke
 // actually useful and which ones the model relied on.
 func (o *OpenAIAdapter) Answer(ctx context.Context, query string, notes []*model.Note) (AnswerResult, error) {
 	if len(notes) == 0 {
-		return AnswerResult{Answer: "No relevant notes found.", Matched: false}, nil
+		return AnswerResult{Answer: "Nothing relevant found.", Matched: false}, nil
 	}
 
 	system := `You are a personal knowledge assistant. Always respond with valid JSON only. No markdown, no prose outside JSON.`

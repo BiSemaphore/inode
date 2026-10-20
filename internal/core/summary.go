@@ -83,7 +83,7 @@ func summaryLeaks(summary, content, category string) bool {
 // the category plus any tags that are not themselves secret-looking.
 func neutralSummary(category string, tags []string) string {
 	if category == "" {
-		category = "note"
+		category = "item"
 	}
 	var safe []string
 	for _, t := range tags {

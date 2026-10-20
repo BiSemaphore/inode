@@ -18,8 +18,10 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "inode",
 	Short: "Command-line knowledge base and secret vault, searched by meaning",
-	Long: `inode stores notes, secrets, commands, and decisions locally.
-Retrieve anything later using natural language via vector similarity search and LLM inference.
+	Long: `inode stores API keys, passwords, tokens, commands and runbooks on your
+machine, encrypting the sensitive ones. Find any of them later with a plain
+English question: inode searches by meaning (embeddings) and an LLM answers
+from what you stored.
 
 Config file: ~/.inode/config.toml
 Data:        ~/.inode/notes.db`,
@@ -47,6 +49,8 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(showCmd)
+	rootCmd.AddCommand(deleteCmd)
 	rootCmd.AddCommand(noteCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(mcpCmd)

@@ -105,9 +105,9 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	// After the first run this is a single query that returns nothing. A
 	// failure must not block normal use, so it is reported and skipped.
 	if n, err := notes.ScrubSensitiveSummaries(context.Background()); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not check stored summaries of sensitive notes: %v\n", err)
+		fmt.Fprintf(os.Stderr, "warning: could not check stored summaries of sensitive items: %v\n", err)
 	} else if n > 0 {
-		fmt.Fprintf(os.Stderr, "inode: replaced %d stored summaries of sensitive notes that contained secret values\n", n)
+		fmt.Fprintf(os.Stderr, "inode: replaced %d stored summaries of sensitive items that contained secret values\n", n)
 	}
 
 	return &Container{

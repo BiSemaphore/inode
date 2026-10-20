@@ -21,19 +21,19 @@ type EmbeddingMismatchError struct {
 
 func (e *EmbeddingMismatchError) Error() string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "the notes in this database were embedded with %s, but the config says %s; "+
+	fmt.Fprintf(&sb, "the items in this database were embedded with %s, but the config says %s; "+
 		"search would compare vectors from different models.\n", describeSpace(e.Stored), describeSpace(e.Configured))
 	if e.Stored.Model == "" {
 		fmt.Fprintf(&sb, "Set embedding.backend and embedding.model back to the model you used before (%d dimensions).\n", e.Stored.Dimension)
 	} else {
-		sb.WriteString("To use these notes, set the embedding settings back:\n")
+		sb.WriteString("To use them, set the embedding settings back:\n")
 		fmt.Fprintf(&sb, "  inode config set embedding.backend %s\n", e.Stored.Backend)
 		fmt.Fprintf(&sb, "  inode config set embedding.model %s\n", e.Stored.Model)
 		if e.Stored.Dimension != e.Configured.Dimension {
 			fmt.Fprintf(&sb, "  inode config set embedding.dimension %d\n", e.Stored.Dimension)
 		}
 	}
-	sb.WriteString("Re-embedding stored notes with a new model is not supported yet: https://github.com/BiSemaphore/inode/issues/131")
+	sb.WriteString("Re-embedding stored items with a new model is not supported yet: https://github.com/BiSemaphore/inode/issues/131")
 	return sb.String()
 }
 

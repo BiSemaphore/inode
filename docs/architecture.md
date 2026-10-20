@@ -1,6 +1,6 @@
 # inode architecture
 
-How inode is built, as of v0.5.1. Every section names the files it describes;
+How inode is built, as of v0.6.0. Every section names the files it describes;
 if the code and this document disagree, the code wins and this document has a
 bug. Plans for teams and organizations are not here; see [What's next](#whats-next).
 

@@ -32,7 +32,7 @@ neither calls an adapter directly.
 
 | Package | Files | Responsibility |
 |---|---|---|
-| `cmd` | `root.go`, `add.go`, `get.go`, `list.go`, `note.go`, `config.go`, `mcp.go` | Commands, flags, output formatting, confirmation prompts |
+| `cmd` | `root.go`, `add.go`, `get.go`, `list.go`, `item.go` (`show`, `delete`), `note.go` (deprecated aliases), `config.go`, `mcp.go` | Commands, flags, output formatting, confirmation prompts |
 | `internal/core` | `container.go` | Builds every adapter and service from the config; checks the embedding model against the database; runs the one-time summary check |
 | | `notes.go` | `NoteService`: add (classify, embed, encrypt, save), get (decrypt), list, delete |
 | | `search.go` | `SearchService`: embed the query, vector search, distance filter, decrypt, LLM answer; `MaskSensitive` |
@@ -127,22 +127,25 @@ Output:
 ```
 Run vault write database/rotate-root/staging, then restart the api.
 
-── Sources (1 note(s)) ──
+── Sources (1) ──
   #a1b2c3d4  Rotate staging DB creds  [runbooks] [vault, postgres, staging]  [sensitive]
 ```
 
 Other commands: `inode list` (filters `--category`, `--tag`, `--limit`;
-sensitive notes only with `--sensitive` and a confirmation), `inode note get <id>`
-(asks before revealing sensitive content), `inode note delete <id>`,
+sensitive items only with `--sensitive` and a confirmation), `inode show <id>`
+(asks before revealing sensitive content), `inode delete <id>`,
 `inode config set|show`, `inode mcp`, `inode version`.
 
-Note IDs can be given as a prefix. `NoteService.Resolve`
+IDs can be given as a prefix. `NoteService.Resolve`
 (`internal/core/notes.go`) accepts only hex digits and `-`, looks up matches
 with the adapter's `MatchIDs` (a literal prefix comparison, so `%` and `_` are
 not wildcards) and returns exactly one note: no match is "not found", more than
 one is an error listing the candidates (sensitive ones without their summary).
-Adapter `Get` and `Delete` take full IDs only. `inode note delete` needs at
-least 4 characters and its prompt names the resolved note (#90).
+Adapter `Get` and `Delete` take full IDs only. `inode delete` needs at
+least 4 characters and its prompt names the resolved item by category, e.g.
+`Delete credential #3f1a9c02 "..."?` (#90, #145). The pre-v0.6.0 spelling
+`inode note get|delete` still works, hidden from help, with a deprecation
+notice on stderr (`cmd/note.go`).
 
 ## 6. Encryption and keys
 
@@ -169,8 +172,8 @@ the note ID, so ciphertexts are not bound to their row.
 
 | Data | Stored as | Shown |
 |---|---|---|
-| Content | Encrypted (section 6) | Masked as `••••••` unless revealed with confirmation (`get --reveal`, `note get`, `list --sensitive`) |
-| Summary | Plaintext, checked for copied secrets (#53) | In `list`, `get` sources, `note get` |
+| Content | Encrypted (section 6) | Masked as `••••••` unless revealed with confirmation (`get --reveal`, `show`, `list --sensitive`) |
+| Summary | Plaintext, checked for copied secrets (#53) | In `list`, `get` sources, `show` |
 | Category, tags | Plaintext | Everywhere |
 | Embedding | Plaintext vector | Never shown; not reversible to text, but encodes meaning |
 
@@ -231,7 +234,7 @@ the configured embedding backend, model and dimension with `embedding_meta`
 | Database | Result |
 |---|---|
 | Matches the config | Normal use |
-| Differs, and holds notes | `add`, `get` and MCP `search_notes` fail with `EmbeddingMismatchError`, which names both models and the `inode config set` commands that switch back. `list`, `note get`, `note delete` and MCP `list_notes` / `get_note` keep working. |
+| Differs, and holds notes | `add`, `get` and MCP `search_notes` fail with `EmbeddingMismatchError`, which names both models and the `inode config set` commands that switch back. `list`, `show`, `delete` and MCP `list_notes` / `get_note` keep working. |
 | Differs, and holds no notes | The config is adopted; if the dimension changed, the vector table is recreated (`ResizeVectors`) |
 | No record yet (created before v0.6.0) | The dimension is read from the schema (vec0 definition, or the `vector(n)` type of `notes.embedding`). If it equals the configured one, the configured model is recorded, since nothing else is known; a model changed earlier with the same dimension cannot be detected. Otherwise the model is recorded as unknown and the database is treated as different. |
 

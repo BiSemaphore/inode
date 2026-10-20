@@ -8,7 +8,7 @@ import (
 )
 
 // ErrNotFound is returned by Get and Delete when no note has the given ID.
-var ErrNotFound = errors.New("note not found")
+var ErrNotFound = errors.New("not found")
 
 // Filters for list and search queries.
 type Filters struct {

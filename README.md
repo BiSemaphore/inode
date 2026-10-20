@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/demo.gif" alt="Terminal recording: inode add saves a note about rotating staging database credentials and marks it sensitive; inode get answers a plain-English question and lists the note as its source" width="100%">
+  <img src="docs/assets/demo.gif" alt="Terminal recording: inode add saves the command for rotating staging database credentials and marks it sensitive; inode get answers a plain-English question and lists the stored command as its source" width="100%">
 </div>
 
 <br/>
@@ -9,7 +9,7 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/BiSemaphore/inode)](go.mod)
 [![License](https://img.shields.io/github/license/BiSemaphore/inode)](LICENSE)
 
-**inode** is a command-line knowledge base for the things engineers keep losing: commands, API keys, decisions, runbooks. You save a note in plain text and later ask for it in plain English. inode finds it by meaning (vector search) and answers from your notes only. By default it runs on your machine with Ollama and SQLite: no API keys, no account.
+**inode** is a command-line knowledge base for the things engineers keep losing: API keys, passwords, tokens, commands, runbooks. You save it in plain text and later ask for it in plain English. inode finds it by meaning (vector search) and answers only from what you stored. By default it runs on your machine with Ollama and SQLite: no API keys, no account.
 
 ```console
 $ inode add "staging DB creds: vault write database/rotate-root/staging"
@@ -18,7 +18,7 @@ $ inode add "staging DB creds: vault write database/rotate-root/staging"
 $ inode get "how do I rotate staging db creds"
 Run vault write database/rotate-root/staging, then restart the api.
 
-── Sources (1 note(s)) ──
+── Sources (1) ──
   #a1b2c3d4  Rotate staging DB creds  [runbooks] [vault, postgres, staging]  [sensitive]
 ```
 
@@ -26,12 +26,12 @@ Run vault write database/rotate-root/staging, then restart the api.
 
 ## What it does
 
-- **Ask in plain English.** `inode get` turns your question into an embedding, finds the closest notes, and has the LLM answer from those notes, listing them as sources. When nothing relevant is stored, it says so.
-- **Sorts notes for you.** Each note gets one of nine categories and a few tags from the LLM. `--category` and `--tags` override it.
-- **Keeps secrets out of sight.** Notes marked sensitive are encrypted with AES-256-GCM before they are written and stay masked in output until you confirm a reveal. A summary that repeats a secret-looking value from the note is replaced. Details in [SECURITY.md](SECURITY.md).
+- **Ask in plain English.** `inode get` turns your question into an embedding, finds the closest stored items, and has the LLM answer from them, listing them as sources. When nothing relevant is stored, it says so.
+- **Sorts what you store.** Each item gets one of nine categories and a few tags from the LLM. `--category` and `--tags` override it.
+- **Keeps secrets out of sight.** Items marked sensitive are encrypted with AES-256-GCM before they are written and stay masked in output until you confirm a reveal. A summary that repeats a secret-looking value from the item is replaced. Details in [SECURITY.md](SECURITY.md).
 - **Runs offline by default.** Ollama for the LLM and embeddings, SQLite (with sqlite-vec) for storage.
 - **Other backends when you want them.** Claude or OpenAI for the LLM, Voyage for embeddings, Postgres with pgvector for storage.
-- **Works with coding agents.** `inode mcp` is a read-only MCP server, so Claude Code or Cursor can search your notes.
+- **Works with coding agents.** `inode mcp` is a read-only MCP server, so Claude Code or Cursor can search what you stored.
 
 ---
 
@@ -70,7 +70,7 @@ inode get "how do I clean up docker"
 inode list
 ```
 
-The first command creates `~/.inode/notes.db` and a master secret in your OS keychain (used to encrypt sensitive notes). Nothing else to set up.
+The first command creates `~/.inode/notes.db` and a master secret in your OS keychain (used to encrypt sensitive items). Nothing else to set up.
 
 ---
 
@@ -96,9 +96,9 @@ inode config set llm.api_key sk-xxxx
 
 Each backend uses its own default model unless you set `llm.model` or `embedding.model`: `llama3.2`, `claude-sonnet-5-5`, `gpt-4o-mini`, `nomic-embed-text`, `voyage-3`. For any other embedding model, also set `embedding.dimension`.
 
-Cloud backends receive the text of your notes, sensitive ones included: on `inode add` to classify and embed them, and on `inode get` as the sources for the answer. See [SECURITY.md](SECURITY.md).
+Cloud backends receive the text of what you store, sensitive items included: on `inode add` to classify and embed them, and on `inode get` as the sources for the answer. See [SECURITY.md](SECURITY.md).
 
-Choose the embedding backend before adding notes: notes embedded by one model cannot be searched with another. inode records the model in the database, and if the config later names a different one, `add` and `get` stop and say how to switch back; `list` and `note` keep working. Re-embedding existing notes with a new model is not built yet ([#131](https://github.com/BiSemaphore/inode/issues/131)).
+Choose the embedding backend before adding anything: items embedded by one model cannot be searched with another. inode records the model in the database, and if the config later names a different one, `add` and `get` stop and say how to switch back; `list`, `show` and `delete` keep working. Re-embedding stored items with a new model is not built yet ([#131](https://github.com/BiSemaphore/inode/issues/131)).
 
 **Postgres with pgvector** instead of SQLite:
 
@@ -118,11 +118,11 @@ inode creates the `vector` extension and its tables on first run. Schema upgrade
 
 | Tool | Returns |
 |---|---|
-| `search_notes` | the notes closest to a query |
-| `list_notes` | notes by category or tag, metadata only |
-| `get_note` | one note, by ID or unique ID prefix |
+| `search_notes` | the items closest to a query |
+| `list_notes` | items by category or tag, metadata only |
+| `get_note` | one item, by ID or unique ID prefix |
 
-Sensitive notes are left out of `search_notes` and `list_notes`, and `get_note` masks their content. `inode config set mcp.reveal_sensitive true` lets the agent read them.
+Sensitive items are left out of `search_notes` and `list_notes`, and `get_note` masks their content. `inode config set mcp.reveal_sensitive true` lets the agent read them.
 
 Claude Code:
 
@@ -140,7 +140,7 @@ Other clients (for Cursor, `~/.cursor/mcp.json`):
 }
 ```
 
-Adding notes from an agent is not exposed yet ([#58](https://github.com/BiSemaphore/inode/issues/58)).
+Adding items from an agent is not exposed yet ([#58](https://github.com/BiSemaphore/inode/issues/58)).
 
 ---
 
@@ -148,7 +148,7 @@ Adding notes from an agent is not exposed yet ([#58](https://github.com/BiSemaph
 
 ```bash
 # Add (with no argument, opens $EDITOR)
-inode add "note content"
+inode add "vault write database/rotate-root/staging"
 inode add "a secret" --sensitive
 inode add "brew upgrade" --no-sensitive
 inode add "docker system prune -a" --category commands --tags docker,cleanup
@@ -161,11 +161,11 @@ inode get "query" --reveal              # unmask sensitive values, after a confi
 inode list                              # newest 20; --limit to change
 inode list --category credentials
 inode list --tag github
-inode list --sensitive                  # only sensitive notes, after a confirmation
+inode list --sensitive                  # only sensitive items, after a confirmation
 
-# One note (its ID, or a unique prefix of the ID shown by inode list)
-inode note get <id>
-inode note delete <id>                  # at least 4 characters; asks first
+# One item (its ID, or a unique prefix of the ID shown by inode list)
+inode show <id>
+inode delete <id>                       # at least 4 characters; asks first
 
 # Settings
 inode config set <key> <value>
@@ -180,13 +180,13 @@ inode version
 
 `credentials`, `commands`, `snippets`, `decisions`, `runbooks`, `learnings`, `references`, `contacts`, `notes`.
 
-If the LLM suggests anything else, the note goes to `notes`. `--category` overrides the LLM.
+If the LLM suggests anything else, the item goes to `notes`, the catch-all category. `--category` overrides the LLM.
 
 ---
 
 ## Status and roadmap
 
-inode is a single-user tool today, released as v0.5.x. The next phases add a self-hosted server so a team can share notes with permissions, then what an organization needs (sign-in through its identity provider, admin roles, audit). Design questions are settled in spike issues before any of it is built.
+inode is a single-user tool today, released as v0.5.x. The next phases add a self-hosted server so a team can share secrets with permissions, then what an organization needs (sign-in through its identity provider, admin roles, audit). Design questions are settled in spike issues before any of it is built.
 
 - [Milestones](https://github.com/BiSemaphore/inode/milestones): what is planned for each release and phase
 - [CHANGELOG.md](CHANGELOG.md): what shipped in each version

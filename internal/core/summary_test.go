@@ -54,7 +54,7 @@ func TestNeutralSummary(t *testing.T) {
 	if got := neutralSummary("credentials", []string{"stripe", "sk_live_9x8y7z"}); got != "credentials (sensitive): stripe" {
 		t.Errorf("got %q", got)
 	}
-	if got := neutralSummary("", nil); got != "note (sensitive)" {
+	if got := neutralSummary("", nil); got != "item (sensitive)" {
 		t.Errorf("got %q", got)
 	}
 }

@@ -85,7 +85,7 @@ func (km *KeyManager) ensureSecret() error {
 
 	if fileExists(filepath.Join(km.configDir, ".salt")) {
 		return fmt.Errorf("master secret not readable from the OS keychain (%w), but %s was initialised before; "+
-			"refusing to create a new secret because it would make existing encrypted notes unreadable. "+
+			"refusing to create a new secret because it would make existing encrypted items unreadable. "+
 			"Unlock the keychain or restore the %q item and retry", getErr, km.configDir, keyringUser)
 	}
 

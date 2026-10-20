@@ -56,10 +56,10 @@ var Keys = []Key{
 	{Name: "db.backend", Allowed: []string{"sqlite", "postgres"}, Help: "storage engine"},
 	{Name: "db.path", Help: "SQLite database file"},
 	{Name: "db.dsn", Secret: true, Help: "Postgres connection string"},
-	{Name: "defaults.sensitive", Kind: Bool, Help: "treat notes as sensitive when unsure"},
+	{Name: "defaults.sensitive", Kind: Bool, Help: "treat new items as sensitive when unsure"},
 	{Name: "search.top_k", Kind: Int, Help: "candidates fetched per search"},
 	{Name: "search.max_distance", Kind: Float, Help: "drop matches farther than this (<0 disables)"},
-	{Name: "mcp.reveal_sensitive", Kind: Bool, Help: "let MCP clients read sensitive notes"},
+	{Name: "mcp.reveal_sensitive", Kind: Bool, Help: "let MCP clients read sensitive items"},
 	{Name: "log.level", Allowed: []string{"debug", "info", "warn", "error"}, Help: "log verbosity (not read by any command yet)"},
 }
 

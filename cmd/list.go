@@ -19,8 +19,8 @@ var (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List saved notes",
-	Long: `List notes with optional filters. Sensitive values are masked by default.
+	Short: "List stored items",
+	Long: `List stored items with optional filters. Sensitive values are masked by default.
 
 Examples:
   inode list
@@ -29,7 +29,7 @@ Examples:
   inode list --sensitive`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if listSensitive {
-			if !prompt("Show sensitive notes?") {
+			if !prompt("Show sensitive items?") {
 				return nil
 			}
 		}
@@ -56,7 +56,7 @@ Examples:
 		}
 
 		if len(notes) == 0 {
-			fmt.Println("No notes found.")
+			fmt.Println("Nothing found.")
 			return nil
 		}
 
@@ -96,8 +96,8 @@ Examples:
 func init() {
 	listCmd.Flags().StringVar(&listCategory, "category", "", "Filter by category")
 	listCmd.Flags().StringVar(&listTag, "tag", "", "Filter by tag")
-	listCmd.Flags().BoolVar(&listSensitive, "sensitive", false, "Show sensitive notes (requires confirmation)")
-	listCmd.Flags().IntVar(&listLimit, "limit", 20, "Maximum number of notes to return")
+	listCmd.Flags().BoolVar(&listSensitive, "sensitive", false, "Show sensitive items (requires confirmation)")
+	listCmd.Flags().IntVar(&listLimit, "limit", 20, "Maximum number of items to return")
 }
 
 func ago(t time.Time) string {

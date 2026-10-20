@@ -29,7 +29,7 @@ var (
 var getCmd = &cobra.Command{
 	Use:     "get <query>",
 	Aliases: []string{"ask", "find", "search"},
-	Short:   "Retrieve notes by natural-language query",
+	Short:   "Ask a question; answered from what you stored",
 	Long: `Embed the query, run vector similarity search, and answer via LLM inference.
 Retrieved notes are used as context — only your data is referenced.
 
@@ -79,7 +79,7 @@ Aliases: ask, find, search.`,
 		}
 
 		fmt.Println()
-		fmt.Printf("%s\n", colorRule(fmt.Sprintf("── Sources (%d note(s)) ──", len(notes))))
+		fmt.Printf("%s\n", colorRule(fmt.Sprintf("── Sources (%d) ──", len(notes))))
 		for _, n := range notes {
 			tagsCol := colorTags(strings.Join(n.Tags, ", "))
 			sensitive := ""

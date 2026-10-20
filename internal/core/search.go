@@ -163,7 +163,7 @@ func (s *SearchService) Search(ctx context.Context, query string, opts SearchOpt
 		return nil, err
 	}
 	if len(decrypted) == 0 {
-		return &SearchResult{Answer: "No relevant notes found.", Notes: nil}, nil
+		return &SearchResult{Answer: "Nothing relevant found.", Notes: nil}, nil
 	}
 
 	step := opts.OnStep

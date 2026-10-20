@@ -5,11 +5,11 @@ How it is built is in [architecture.md](architecture.md).
 
 ## What it is
 
-A knowledge base you use from the terminal. You save anything in one line (a
-note, a command, a decision, an API key) and later ask for it in plain
-English. inode classifies and tags what you save, encrypts what is sensitive,
-and answers questions from your notes with the notes it used listed as
-sources.
+A knowledge base and secret vault you use from the terminal. You save an API
+key, password, token, command or runbook in one line and later ask for it in
+plain English. inode classifies and tags what you save, encrypts what is
+sensitive, and answers questions from what you stored, listing the items it
+used as sources.
 
 It runs on your machine by default: Ollama for the language model and
 embeddings, SQLite for storage, no account and no network service. Cloud
@@ -18,7 +18,7 @@ backends and Postgres are opt-in.
 ## Who it is for
 
 Developers who keep reusable knowledge scattered across shell history, chat
-threads, notes apps and `.env` files, and who would rather ask than search.
+threads, wikis and `.env` files, and who would rather ask than search.
 Today inode is single-user: one person, one knowledge base. Sharing with a
 team is the next phase (see [What's next](#whats-next)).
 
@@ -35,10 +35,10 @@ team is the next phase (see [What's next](#whats-next)).
 
 | Feature | Since |
 |---|---|
-| `add`, `list`, `note get/delete`, `config`, and search as `ask` | v0.1.0 |
+| `add`, `list`, `show`/`delete` (`note get/delete` before v0.6.0), `config`, and search as `ask` | v0.1.0 |
 | Search renamed to `get`, with `ask` kept as an alias | v0.2.0 |
 | Automatic category, tags, sensitivity and one-line summary | v0.1.0 |
-| AES-256-GCM encryption for sensitive notes, master secret in the OS keychain | v0.1.0 |
+| AES-256-GCM encryption for sensitive items, master secret in the OS keychain | v0.1.0 |
 | Local default: Ollama (LLM and embeddings) and SQLite with sqlite-vec | v0.1.0 |
 | Postgres with pgvector as an alternative store | v0.3.0 |
 | MCP server (`inode mcp`), read-only, for Claude Code, Cursor and other MCP clients | v0.4.0 |
@@ -46,22 +46,22 @@ team is the next phase (see [What's next](#whats-next)).
 | Versioned schema migrations with an automatic backup | v0.5.0 |
 | Secrets kept out of summaries; an existing master secret is never replaced | v0.5.0 |
 | Each backend uses its own default model, URL and embedding dimension | v0.5.1 |
-| Ambiguous note ID prefixes are refused instead of matching any note | v0.5.1 |
+| Ambiguous ID prefixes are refused instead of matching any item | v0.5.1 |
 
 ## Commands
 
 | Command | Does |
 |---|---|
-| `inode add "<text>"` | Save a note. Flags: `--category`, `--tags a,b`, `--sensitive`, `--no-sensitive` |
-| `inode get "<question>"` | Answer from your notes, with sources. Aliases: `ask`, `find`, `search`. Flag: `--reveal` (asks first) |
-| `inode list` | List notes. Flags: `--category`, `--tag`, `--limit` (default 20), `--sensitive` (asks first) |
-| `inode note get <id>` | Show one note; asks before revealing sensitive content |
-| `inode note delete <id>` | Delete one note |
+| `inode add "<text>"` | Save an API key, password, token, command or runbook. Flags: `--category`, `--tags a,b`, `--sensitive`, `--no-sensitive` |
+| `inode get "<question>"` | Answer from what you stored, with sources. Aliases: `ask`, `find`, `search`. Flag: `--reveal` (asks first) |
+| `inode list` | List stored items. Flags: `--category`, `--tag`, `--limit` (default 20), `--sensitive` (asks first) |
+| `inode show <id>` | Show one item; asks before revealing sensitive content |
+| `inode delete <id>` | Delete one item; the prompt names it by category, e.g. `Delete credential #3f1a9c02 "..."?` |
 | `inode config set <key> <value>`, `inode config show` | Change or print settings; `set` checks the key and value type, `show` prints every key with API keys and `db.dsn` redacted |
 | `inode mcp` | Run the MCP server over stdio |
 | `inode version` | Print the version |
 
-IDs can be shortened to a prefix; the CLI prints the first 8 characters. A prefix that matches more than one note is refused with the list of matches, and `note delete` needs at least 4 characters.
+IDs can be shortened to a prefix; the CLI prints the first 8 characters. A prefix that matches more than one item is refused with the list of matches, and `delete` needs at least 4 characters.
 
 ## Categories
 
@@ -80,10 +80,10 @@ The language model must pick one of these; anything else becomes `notes`
 | `contacts` | People, emails, handles, on-call rotations |
 | `notes` | Everything else |
 
-## Sensitive notes
+## Sensitive items
 
-Notes are sensitive by default (`defaults.sensitive = true`); `--no-sensitive`
-or the config turns that off. A sensitive note's content is encrypted at rest
+Items are sensitive by default (`defaults.sensitive = true`); `--no-sensitive`
+or the config turns that off. A sensitive item's content is encrypted at rest
 and masked in every output until you confirm a reveal. Its summary, category,
 tags and embedding are not encrypted. The summary is checked so it never
 repeats a secret. With a cloud backend, content is sent to that provider to be
@@ -110,17 +110,17 @@ targets are tracked in #33.
 - **A hosted service.** inode runs on your machine, or on a server you run.
   There is no inode cloud and no paid tier.
 - **Sync between devices.** Several machines can point at one Postgres
-  database, but sensitive notes are encrypted with the master secret of the
+  database, but sensitive items are encrypted with the master secret of the
   machine that saved them, so they only open there.
 - **A replacement for a team secrets manager** such as Vault. inode keeps your
   own working knowledge, secrets included, close at hand; it does not issue,
   rotate or audit credentials.
-- **Editing notes in place.** Delete and add again.
+- **Editing items in place.** Delete and add again.
 - **Full-text or keyword search.** Retrieval is semantic, by meaning.
 
 ## What's next
 
-Teams and organizations: notes shared like files, with an owner, a team and a
+Teams and organizations: secrets shared like files, with an owner, a team and a
 mode (`chmod 640`), a self-hosted server, search that only sees what you may
 read, and agents that search as the person running them. The design is being
 worked out in public in #35 and the spikes linked from it, and the order of work

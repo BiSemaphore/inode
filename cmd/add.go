@@ -20,7 +20,7 @@ var (
 
 var addCmd = &cobra.Command{
 	Use:   "add [content]",
-	Short: "Save a note, secret, command, or decision",
+	Short: "Save an API key, password, token, command or runbook",
 	Long: `Save content to inode. If no content is provided, opens $EDITOR.
 
 LLM auto-detects category and tags unless specified.

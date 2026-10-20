@@ -7,16 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-20
+
 ### Changed
 - The CLI no longer calls what you store "notes". New commands `inode show <id>` and `inode delete <id>` replace `inode note get` and `inode note delete`; prompts and output name the item by its category (`Delete credential #3f1a9c02 "stripe test key"?`, `deleted credential #3f1a9c02`), and help text, errors and messages describe API keys, passwords, tokens, commands and runbooks. Internal names (`~/.inode/notes.db`) and MCP tool names are unchanged. ([#145](https://github.com/BiSemaphore/inode/issues/145))
 - The MCP server is built on mcp-go v1.3.0 (was v0.54.0). Tools, their arguments and their responses are unchanged. ([#141](https://github.com/BiSemaphore/inode/issues/141))
 
 ### Deprecated
-- `inode note get` and `inode note delete` still work, hidden from help, and print a notice pointing to `inode show` and `inode delete`. They will be removed in the next minor release. ([#145](https://github.com/BiSemaphore/inode/issues/145))
+- `inode note get` and `inode note delete` still work, hidden from help, and print a notice pointing to `inode show` and `inode delete`. They will be removed in v0.7.0. ([#145](https://github.com/BiSemaphore/inode/issues/145))
 
 ### Fixed
-- Changing the embedding model no longer breaks search silently. The database now records the embedding backend, model and dimension its notes were embedded with. If the config names a different model, `inode add`, `inode get` and MCP `search_notes` stop with a message naming both models and the `inode config set` commands that switch back, instead of returning unrelated notes (same dimension) or failing with a database error (different dimension). `inode list`, `inode note` and MCP `list_notes` / `get_note` keep working. A database with no notes takes the new model, resizing its vector table if needed. Databases from earlier versions are upgraded on first run: the dimension is read from the schema and, when it matches the config, the configured model is recorded, since it is the only information available. ([#130](https://github.com/BiSemaphore/inode/issues/130))
+- Changing the embedding model no longer breaks search silently. The database now records the embedding backend, model and dimension its items were embedded with. If the config names a different model, `inode add`, `inode get` and MCP `search_notes` stop with a message naming both models and the `inode config set` commands that switch back, instead of returning unrelated items (same dimension) or failing with a database error (different dimension). `inode list`, `inode show` and MCP `list_notes` / `get_note` keep working. A database with no items takes the new model, resizing its vector table if needed. Databases from earlier versions are upgraded on first run: the dimension is read from the schema and, when it matches the config, the configured model is recorded, since it is the only information available. ([#130](https://github.com/BiSemaphore/inode/issues/130))
 - `embedding.model = nomic-embed-text:latest` is recognised as `nomic-embed-text` (768 dimensions) instead of requiring `embedding.dimension`. ([#130](https://github.com/BiSemaphore/inode/issues/130))
+
+---
 
 ## [0.5.1] - 2026-10-18
 
@@ -125,7 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SQLite + sqlite-vec for local vector similarity search
 - Docker Compose setup for Ollama
 
-[Unreleased]: https://github.com/BiSemaphore/inode/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/BiSemaphore/inode/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/BiSemaphore/inode/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/BiSemaphore/inode/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/BiSemaphore/inode/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/BiSemaphore/inode/compare/v0.3.0...v0.4.0

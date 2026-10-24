@@ -3,7 +3,7 @@ module github.com/BiSemaphore/inode
 go 1.26.0
 
 require (
-	github.com/anthropics/anthropic-sdk-go v1.81.0
+	github.com/anthropics/anthropic-sdk-go v1.84.0
 	github.com/asg017/sqlite-vec-go-bindings v0.1.6
 	github.com/fatih/color v1.19.0
 	github.com/google/uuid v1.6.0
